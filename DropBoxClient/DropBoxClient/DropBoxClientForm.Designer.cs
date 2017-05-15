@@ -33,10 +33,7 @@
             this.displayNameLabel = new System.Windows.Forms.Label();
             this.topPanel = new System.Windows.Forms.Panel();
             this.bottomPanel = new System.Windows.Forms.Panel();
-            this.separatorLabel = new System.Windows.Forms.Label();
-            this.allocatedSpaceLabel = new System.Windows.Forms.Label();
             this.spaceLabel = new System.Windows.Forms.Label();
-            this.usedSpaceLabel = new System.Windows.Forms.Label();
             this.currentStatusLabel = new System.Windows.Forms.Label();
             this.statusLabel = new System.Windows.Forms.Label();
             this.logsPanel = new System.Windows.Forms.Panel();
@@ -64,6 +61,7 @@
             this.loginTextBox = new System.Windows.Forms.TextBox();
             this.loginLabel = new System.Windows.Forms.Label();
             this.loginButton = new System.Windows.Forms.Button();
+            this.usedAndAllocatedSpaceLabel = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.parametersHomePictureBox)).BeginInit();
             this.topPanel.SuspendLayout();
             this.bottomPanel.SuspendLayout();
@@ -119,10 +117,8 @@
             // bottomPanel
             // 
             this.bottomPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.bottomPanel.Controls.Add(this.separatorLabel);
-            this.bottomPanel.Controls.Add(this.allocatedSpaceLabel);
+            this.bottomPanel.Controls.Add(this.usedAndAllocatedSpaceLabel);
             this.bottomPanel.Controls.Add(this.spaceLabel);
-            this.bottomPanel.Controls.Add(this.usedSpaceLabel);
             this.bottomPanel.Controls.Add(this.currentStatusLabel);
             this.bottomPanel.Controls.Add(this.statusLabel);
             this.bottomPanel.Location = new System.Drawing.Point(0, 582);
@@ -130,45 +126,15 @@
             this.bottomPanel.Size = new System.Drawing.Size(501, 46);
             this.bottomPanel.TabIndex = 4;
             // 
-            // separatorLabel
-            // 
-            this.separatorLabel.AutoSize = true;
-            this.separatorLabel.Location = new System.Drawing.Point(438, 15);
-            this.separatorLabel.Name = "separatorLabel";
-            this.separatorLabel.Size = new System.Drawing.Size(14, 17);
-            this.separatorLabel.TabIndex = 0;
-            this.separatorLabel.Text = "/";
-            this.separatorLabel.Visible = false;
-            // 
-            // allocatedSpaceLabel
-            // 
-            this.allocatedSpaceLabel.AutoSize = true;
-            this.allocatedSpaceLabel.Location = new System.Drawing.Point(447, 15);
-            this.allocatedSpaceLabel.Name = "allocatedSpaceLabel";
-            this.allocatedSpaceLabel.Size = new System.Drawing.Size(39, 17);
-            this.allocatedSpaceLabel.TabIndex = 6;
-            this.allocatedSpaceLabel.Text = "2 Go";
-            this.allocatedSpaceLabel.Visible = false;
-            // 
             // spaceLabel
             // 
             this.spaceLabel.AutoSize = true;
-            this.spaceLabel.Location = new System.Drawing.Point(287, 15);
+            this.spaceLabel.Location = new System.Drawing.Point(272, 15);
             this.spaceLabel.Name = "spaceLabel";
             this.spaceLabel.Size = new System.Drawing.Size(101, 17);
             this.spaceLabel.TabIndex = 2;
             this.spaceLabel.Text = "Espace utilisé :";
             this.spaceLabel.Visible = false;
-            // 
-            // usedSpaceLabel
-            // 
-            this.usedSpaceLabel.AutoSize = true;
-            this.usedSpaceLabel.Location = new System.Drawing.Point(384, 15);
-            this.usedSpaceLabel.Name = "usedSpaceLabel";
-            this.usedSpaceLabel.Size = new System.Drawing.Size(57, 17);
-            this.usedSpaceLabel.TabIndex = 5;
-            this.usedSpaceLabel.Text = "0.00 Go";
-            this.usedSpaceLabel.Visible = false;
             // 
             // currentStatusLabel
             // 
@@ -428,6 +394,16 @@
             this.loginButton.UseVisualStyleBackColor = true;
             this.loginButton.Click += new System.EventHandler(this.loginButton_Click);
             // 
+            // usedAndAllocatedSpaceLabel
+            // 
+            this.usedAndAllocatedSpaceLabel.AutoSize = true;
+            this.usedAndAllocatedSpaceLabel.Location = new System.Drawing.Point(371, 15);
+            this.usedAndAllocatedSpaceLabel.Name = "usedAndAllocatedSpaceLabel";
+            this.usedAndAllocatedSpaceLabel.Size = new System.Drawing.Size(12, 17);
+            this.usedAndAllocatedSpaceLabel.TabIndex = 6;
+            this.usedAndAllocatedSpaceLabel.Text = "-";
+            this.usedAndAllocatedSpaceLabel.Visible = false;
+            // 
             // DropBoxClientForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 17F);
@@ -478,11 +454,8 @@
         private System.Windows.Forms.Label currentStatusLabel;
         private System.Windows.Forms.Label statusLabel;
         private System.Windows.Forms.Label spaceLabel;
-        private System.Windows.Forms.Label usedSpaceLabel;
-        private System.Windows.Forms.Label allocatedSpaceLabel;
         private System.Windows.Forms.Panel logsPanel;
         private System.Windows.Forms.Label logsLabel;
-        private System.Windows.Forms.Label separatorLabel;
         private System.Windows.Forms.Panel homePanel;
         private System.Windows.Forms.Panel parametersPanel;
         private System.Windows.Forms.GroupBox folderGroupBox;
@@ -506,6 +479,7 @@
         private System.Windows.Forms.TextBox dropboxCodeTextBox;
         private System.Windows.Forms.Label dropboxCodeLabel;
         private System.Windows.Forms.Button continueButton;
+        private System.Windows.Forms.Label usedAndAllocatedSpaceLabel;
     }
 }
 

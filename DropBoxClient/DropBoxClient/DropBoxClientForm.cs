@@ -24,6 +24,7 @@ namespace DropBoxClient
         //////////// Constantes ////////////
         private const string STR_APP_KEY = "5zpx9nyjaxmksiy";
         private const string STR_APP_SECRET = "c395jxtgfj42pjw";
+        private const string STR_TOKEN_TYPE = "Bearer ";
 
         // Titre et message des MessageBox
         private const string STR_QUIT_BOX_MESSAGE = "Voulez-vous vraiment quitter l'application ? La synchronisation automatique ne sera plus effectuée.";
@@ -46,8 +47,17 @@ namespace DropBoxClient
         private string strPostGetAccount = "https://api.dropboxapi.com/2/users/get_current_account";
         private string strPostGetSpaceUsage = "https://api.dropboxapi.com/2/users/get_space_usage";
 
+        //////////// Variables pour l'authentification ////////////
         private string strCode;
-        private string strToken; 
+        private string strToken;
+        private string strAuthHeader = "";
+
+        // Journal des opérations
+        private List<string> list_strLogs = new List<string>();
+
+        private string strJson;
+
+        StreamReader reader;
 
         /// <summary>
         /// Constructeur de la Form
@@ -90,111 +100,136 @@ namespace DropBoxClient
         }
 
         /// <summary>
-        /// 
+        /// Provoque l'ouverture du navigateur pour l'autorisation de l'application
         /// </summary>
         /// <param name="sender">Contrôle provoquant l'événement</param>
         /// <param name="e">Données liées à l'événement</param>
         private void loginButton_Click(object sender, EventArgs e)
         {
+            // Ouvre le navigateur sur l'url permettant l'autorisation de l'app
             System.Diagnostics.Process.Start(strGetOauth2Authorize += "?client_id=" + STR_APP_KEY + "&response_type=code&force_reauthentication=true");
+
+            // Affiche la textbox servant à récupérer le code fournit à l'utilisateur ainsi que le bouton continuer
             dropboxCodeLabel.Visible = true;
             dropboxCodeTextBox.Visible = true;
             continueButton.Visible = true;
 
         }
 
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void continueButton_Click(object sender, EventArgs e)
         {
-            strCode = dropboxCodeTextBox.Text;
+            // Obtient le token
+            getToken();
 
-            // OBTENTION TOKEN //
-            // Création de la requête avec l'url
-            HttpWebRequest postRequest = (HttpWebRequest)WebRequest.Create(strPostOauth2Token += "?code=" + Uri.EscapeDataString(strCode) + "&grant_type=" + Uri.EscapeDataString("authorization_code") + "&client_id="+ Uri.EscapeDataString(STR_APP_KEY) + "&client_secret="+ Uri.EscapeDataString(STR_APP_SECRET));
-            // Ajout de la méthode, verbe http
-            postRequest.Method = "POST";
-            // Spécification du type de contenu
-            postRequest.ContentType = "application/x-www-form-urlencoded";
-            // Envoi de la requête
-            WebResponse postResponse = postRequest.GetResponse();
-            // Récupération des données reçues et stockage dans un string
-            StreamReader reader = new StreamReader(postResponse.GetResponseStream());
-            string strJson = reader.ReadToEnd();
-            postResponse.Close();
+            // Crée le Header d'authentification
+            strAuthHeader = STR_TOKEN_TYPE + Uri.EscapeDataString(strToken);
 
-            // Création d'un objet JSON avec le string des données reçues
-            JObject joToken = JObject.Parse(strJson);
-            strToken = Convert.ToString(joToken["access_token"]);
+            // Crée la requête permettant d'obtenir le display_name
+            WebRequest postDisplayNameRequest = createPostRequest(strAuthHeader, strPostGetAccount);
 
-            // OBTENTION DISPLAY_NAME
-            // Création de la requête avec l'url
-            HttpWebRequest postRequest2 = (HttpWebRequest)WebRequest.Create(strPostGetAccount);
-            postRequest2.Headers.Add("Authorization", "Bearer "+ Uri.EscapeDataString(strToken));
-            // Ajout de la méthode, verbe http
-            postRequest2.Method = "POST";
-            // Envoi de la requête
-            WebResponse postResponse2 = postRequest2.GetResponse();
-            // Récupération des données reçues et stockage dans un string
-            StreamReader reader2 = new StreamReader(postResponse2.GetResponseStream());
-            strJson = reader2.ReadToEnd();
-            postResponse.Close();
+            try
+            {
+                // Envoi de la requête
+                WebResponse postDisplayNameResponse = postDisplayNameRequest.GetResponse();
+                // Récupération des données reçues et stockage dans un string
+                reader = new StreamReader(postDisplayNameResponse.GetResponseStream());
+                strJson = reader.ReadToEnd();
+                postDisplayNameResponse.Close();
 
-            JObject joAccount = JObject.Parse(strJson);
+                // Création d'un objet JSON avec le string des données reçues
+                JObject joAccount = JObject.Parse(strJson);
 
-            string strDisplayName = Convert.ToString(joAccount["name"]["display_name"]);
-
-            displayNameLabel.Text = strDisplayName;
-            connectedProfileLabel.Text = strDisplayName;
+                // Récupère le display_name 
+                string strDisplayName = Convert.ToString(joAccount["name"]["display_name"]);
+                displayNameLabel.Text = strDisplayName;
+                connectedProfileLabel.Text = strDisplayName;
+            }
+            catch (WebException WebE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(WebE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
 
             // Cache l'interface de connexion et affiche l'interface principale
             loginPanel.Visible = false;
+            dropboxCodeLabel.Visible = false;
+            dropboxCodeTextBox.Visible = false;
+            continueButton.Visible = false;
             homePanel.Visible = true;
 
-            // Création de la requête avec l'url
-            HttpWebRequest postRequest3 = (HttpWebRequest)WebRequest.Create(strPostGetSpaceUsage);
-            postRequest3.Headers.Add("Authorization", "Bearer " + Uri.EscapeDataString(strToken));
-            // Ajout de la méthode, verbe http
-            postRequest3.Method = "POST";
-            // Envoi de la requête
-            WebResponse postResponse3 = postRequest3.GetResponse();
-            // Récupération des données reçues et stockage dans un string
-            StreamReader reader3 = new StreamReader(postResponse3.GetResponseStream());
-            strJson = reader3.ReadToEnd();
-            postResponse.Close();
+            try
+            {
+                // Crée la requête permettant d'obtenir les informations liées au stockage
+                WebRequest postSpaceUsageRequest = createPostRequest(strAuthHeader, strPostGetSpaceUsage);
+                // Envoi de la requête
+                WebResponse postSpaceUsageResponse = postSpaceUsageRequest.GetResponse();
+                // Récupération des données reçues et stockage dans un string
+                reader = new StreamReader(postSpaceUsageResponse.GetResponseStream());
+                strJson = reader.ReadToEnd();
+                postSpaceUsageResponse.Close();
 
-            JObject joSpaceUsage = JObject.Parse(strJson);
+                // Création d'un objet JSON avec le string des données reçues
+                JObject joSpaceUsage = JObject.Parse(strJson);
 
-            double dblUsedSpace = Convert.ToDouble(joSpaceUsage["used"]);
-            double dblAllocatedSpace = Convert.ToDouble(joSpaceUsage["allocation"]["allocated"]);
+                // Récupère le stockage utilisé et le stockage total (en octet)
+                double dblUsedSpace = Convert.ToDouble(joSpaceUsage["used"]);
+                double dblAllocatedSpace = Convert.ToDouble(joSpaceUsage["allocation"]["allocated"]);
+                string strUsedSpace;
 
-            usedSpaceLabel.Text = (dblUsedSpace / 1000000000).ToString("0.##") + " Go";
-            allocatedSpaceLabel.Text = (dblAllocatedSpace / 1000000000).ToString("0.##") + " Go";
+                // Si la conversion en Go donne un résultat plus petit que 0.1 Go
+                if (dblUsedSpace / 1000000000 < 0.1)
+                {
+                    // Convertit le résultat en Mo
+                    strUsedSpace = (dblUsedSpace / 1000000).ToString("0.## Mo");
+                }
+                else
+                {
+                    strUsedSpace = (dblUsedSpace / 1000000000).ToString("0.## Go");
+                }
+                // Convertit les valeurs en Go
+                string strAllocatedSpace = (dblAllocatedSpace / 1000000000).ToString("0.## Go");
+
+                usedAndAllocatedSpaceLabel.Text = string.Format("{0} / {1}", strUsedSpace, strAllocatedSpace);
+            }
+            catch (WebException WebE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(WebE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
 
             // Affiche les données concernat l'espace
             spaceLabel.Visible = true;
-            allocatedSpaceLabel.Visible = true;
-            separatorLabel.Visible = true;
-            usedSpaceLabel.Visible = true;
+            usedAndAllocatedSpaceLabel.Visible = true;
 
             // Modification du statut
             currentStatusLabel.Text = STR_CONNECTED_STATUS;
         }
 
         /// <summary>
-        /// 
+        /// Provoque la déconnexion 
         /// </summary>
         /// <param name="sender">Contrôle provoquant l'événement</param>
         /// <param name="e">Données liées à l'événement</param>
         private void logoutButton_Click(object sender, EventArgs e)
         {
+            // Met la valeur du token à null
+            strToken = null;
+
             // Cache l'interface des paramètres et affiche l'interface de connexion
-            parametersLabel.Visible = false;
+            parametersPanel.Visible = false;
             loginPanel.Visible = true;
 
             // Cache les données concernat l'espace
             spaceLabel.Visible = false;
-            allocatedSpaceLabel.Visible = false;
-            separatorLabel.Visible = false;
-            usedSpaceLabel.Visible = false;
+            usedAndAllocatedSpaceLabel.Visible = false;
 
             // Remet l'icône Paramètres
             parametersHomePictureBox.Image = bitmapParametersIcon;
@@ -251,6 +286,66 @@ namespace DropBoxClient
             {
                 MessageBox.Show(STR_SAVE_BOX_MESSAGE_KO, STR_SAVE_BOX_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
+        }
+
+        ///////////////////////
+
+        /// <summary>
+        /// Crée une requête http POST avec les paramètres donnés
+        /// </summary>
+        /// <param name="strAuthHeader">Header d'authentification</param>
+        /// <param name="strPostUrl">URL Resource</param>
+        /// <returns>Requête http POST prête à être envoyée </returns>
+        private WebRequest createPostRequest(string strAuthHeader, string strPostUrl)
+        {
+            // Création de la requête avec l'url
+            HttpWebRequest postRequest = (HttpWebRequest)WebRequest.Create(strPostUrl);
+            postRequest.Headers.Add("Authorization", strAuthHeader);
+            // Ajout de la méthode, verbe http
+            postRequest.Method = "POST";
+
+            return postRequest;
+        }
+
+        /// <summary>
+        /// Récupère le token grâce au code fournit par l'utilisateur
+        /// </summary>
+        private void getToken()
+        {
+            // Récupère le code de l'utilisateur
+            strCode = dropboxCodeTextBox.Text;
+
+            // Création de la requête avec l'url
+            HttpWebRequest postRequest = (HttpWebRequest)WebRequest.Create(strPostOauth2Token += "?code=" + Uri.EscapeDataString(strCode) + "&grant_type=" + Uri.EscapeDataString("authorization_code") + "&client_id=" + Uri.EscapeDataString(STR_APP_KEY) + "&client_secret=" + Uri.EscapeDataString(STR_APP_SECRET));
+            // Ajout de la méthode, verbe http
+            postRequest.Method = "POST";
+            // Spécification du type de contenu
+            postRequest.ContentType = "application/x-www-form-urlencoded";
+            
+            try
+            {
+                // Envoi de la requête
+                WebResponse postResponse = postRequest.GetResponse();
+                // Récupération des données reçues et stockage dans un string
+                reader = new StreamReader(postResponse.GetResponseStream());
+                string strJson = reader.ReadToEnd();
+                postResponse.Close();
+
+                // Création d'un objet JSON avec le string des données reçues
+                JObject joToken = JObject.Parse(strJson);
+                // Récupère le token
+                strToken = Convert.ToString(joToken["access_token"]);
+
+                DateTime dateNow = DateTime.Now;
+                list_strLogs.Add(Convert.ToString(dateNow) + " - Connexion effectuée avec succès");
+            }
+            catch (WebException WebE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(WebE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
         }
     }
 }
