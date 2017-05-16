@@ -48,14 +48,18 @@ namespace DropBoxClient
         private string strPostGetSpaceUsage = "https://api.dropboxapi.com/2/users/get_space_usage";
 
         //////////// Variables pour l'authentification ////////////
-        private string strCode;
-        private string strToken;
-        private string strAuthHeader = "";
+        private string strToken; // Châine de caractère contenant le token
+        private byte[] tab_byteToken; // Tableau de byte pour la protection du token
+        private string strAuthHeader = ""; // En-tête d'authentification
 
         // Journal des opérations
         private List<string> list_strLogs = new List<string>();
 
+        // Permet de récupérer le JSON reçu après la requête à l'API
         private string strJson;
+
+        // Chemin du dossier à synchroniser
+        private string strFolderPath;
 
         StreamReader reader;
 
@@ -71,7 +75,36 @@ namespace DropBoxClient
             logsSaveFileDialog.RestoreDirectory = true;
             logsSaveFileDialog.DefaultExt = ".txt";
             logsSaveFileDialog.AddExtension = true;
-        }
+
+            // Si un token est sauvegardé dans les paramètres d'application
+            if (Properties.Settings.Default.tab_byteProtectedToken != null)
+            {
+                // Décode le tableau byte protégé en tableau byte contenant le token
+                tab_byteToken = ProtectedData.Unprotect(Properties.Settings.Default.tab_byteProtectedToken, null, DataProtectionScope.CurrentUser);
+                // Convertit le token en string
+                strToken = System.Text.Encoding.ASCII.GetString(tab_byteToken);
+
+                getDisplayName();
+                getSpaceUsage();
+                showMainInterface();
+
+                addToLogs("Connexion effectuée avec succès");
+
+                // Modification du statut
+                currentStatusLabel.Text = STR_CONNECTED_STATUS;
+
+            }   
+            // Si le chemin du dossier à synchroniser est mémorisé  
+            if(Properties.Settings.Default.strFolderPath != null)
+            {
+                // Récupère le chemin du dossier
+                strFolderPath = Properties.Settings.Default.strFolderPath;
+                folderToSynchPathLabel.Text = strFolderPath;
+
+                // Surveille le dossier spécifié
+                folderToSynchFileSystemWatcher.Path = strFolderPath;
+            }      
+    }
 
         //////////// INTERACTIONS PROVENANT D'ELEMENTS DU GUI ////////////
 
@@ -84,18 +117,12 @@ namespace DropBoxClient
         {
             // Si l'image correspond à l'icône Paramètres
             if(parametersHomePictureBox.Image == bitmapParametersIcon)
-            {   // Change l'icône en Home
-                parametersHomePictureBox.Image = bitmapHomeIcon;
-                // Cache l'interface principale et affiche celle des paramètres
-                homePanel.Visible = false;
-                parametersPanel.Visible = true;
+            {   
+                showParametersInterface();
             }
             else
-            {   // Change l'icône en celui des paramètres 
-                parametersHomePictureBox.Image = bitmapParametersIcon;
-                // Cache l'interface des paramètres et affiche l'interface principale
-                parametersPanel.Visible = false;
-                homePanel.Visible = true;
+            {
+                showMainInterface();
             }
         }
 
@@ -113,104 +140,39 @@ namespace DropBoxClient
             dropboxCodeLabel.Visible = true;
             dropboxCodeTextBox.Visible = true;
             continueButton.Visible = true;
-
         }
 
         /// <summary>
-        /// 
+        /// Poursuit la connexion en obtenant le token et en passant à l'interface principale
+        /// si son obtention est réussie 
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param name="sender">Contrôle provoquant l'événement</param>
+        /// <param name="e">Données liées à l'événement</param>
         private void continueButton_Click(object sender, EventArgs e)
         {
-            // Obtient le token
-            getToken();
+            bool boolIsTokenOK = getToken();
 
-            // Crée le Header d'authentification
-            strAuthHeader = STR_TOKEN_TYPE + Uri.EscapeDataString(strToken);
-
-            // Crée la requête permettant d'obtenir le display_name
-            WebRequest postDisplayNameRequest = createPostRequest(strAuthHeader, strPostGetAccount);
-
-            try
+            // Si l'obtention du token a réussi
+            if (boolIsTokenOK)
             {
-                // Envoi de la requête
-                WebResponse postDisplayNameResponse = postDisplayNameRequest.GetResponse();
-                // Récupération des données reçues et stockage dans un string
-                reader = new StreamReader(postDisplayNameResponse.GetResponseStream());
-                strJson = reader.ReadToEnd();
-                postDisplayNameResponse.Close();
+                // Obtient les informations du compte
+                getDisplayName();
+                getSpaceUsage();
 
-                // Création d'un objet JSON avec le string des données reçues
-                JObject joAccount = JObject.Parse(strJson);
+                // Affiche l'interface principale
+                showMainInterface();
 
-                // Récupère le display_name 
-                string strDisplayName = Convert.ToString(joAccount["name"]["display_name"]);
-                displayNameLabel.Text = strDisplayName;
-                connectedProfileLabel.Text = strDisplayName;
+                // Modification du statut
+                currentStatusLabel.Text = STR_CONNECTED_STATUS;
+
+                // Commence la surveillance du dossier
+                folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
             }
-            catch (WebException WebE)
+            else
             {
-                // Récupère le message d'erreur et l'affiche dans une MessageBox
-                string strErreur = Convert.ToString(WebE.Message);
-                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                // Modification du statut
+                currentStatusLabel.Text = "La connexion a échoué. Réessayez.";
             }
-
-            // Cache l'interface de connexion et affiche l'interface principale
-            loginPanel.Visible = false;
-            dropboxCodeLabel.Visible = false;
-            dropboxCodeTextBox.Visible = false;
-            continueButton.Visible = false;
-            homePanel.Visible = true;
-
-            try
-            {
-                // Crée la requête permettant d'obtenir les informations liées au stockage
-                WebRequest postSpaceUsageRequest = createPostRequest(strAuthHeader, strPostGetSpaceUsage);
-                // Envoi de la requête
-                WebResponse postSpaceUsageResponse = postSpaceUsageRequest.GetResponse();
-                // Récupération des données reçues et stockage dans un string
-                reader = new StreamReader(postSpaceUsageResponse.GetResponseStream());
-                strJson = reader.ReadToEnd();
-                postSpaceUsageResponse.Close();
-
-                // Création d'un objet JSON avec le string des données reçues
-                JObject joSpaceUsage = JObject.Parse(strJson);
-
-                // Récupère le stockage utilisé et le stockage total (en octet)
-                double dblUsedSpace = Convert.ToDouble(joSpaceUsage["used"]);
-                double dblAllocatedSpace = Convert.ToDouble(joSpaceUsage["allocation"]["allocated"]);
-                string strUsedSpace;
-
-                // Si la conversion en Go donne un résultat plus petit que 0.1 Go
-                if (dblUsedSpace / 1000000000 < 0.1)
-                {
-                    // Convertit le résultat en Mo
-                    strUsedSpace = (dblUsedSpace / 1000000).ToString("0.## Mo");
-                }
-                else
-                {
-                    strUsedSpace = (dblUsedSpace / 1000000000).ToString("0.## Go");
-                }
-                // Convertit les valeurs en Go
-                string strAllocatedSpace = (dblAllocatedSpace / 1000000000).ToString("0.## Go");
-
-                usedAndAllocatedSpaceLabel.Text = string.Format("{0} / {1}", strUsedSpace, strAllocatedSpace);
-            }
-            catch (WebException WebE)
-            {
-                // Récupère le message d'erreur et l'affiche dans une MessageBox
-                string strErreur = Convert.ToString(WebE.Message);
-                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-
-
-            // Affiche les données concernat l'espace
-            spaceLabel.Visible = true;
-            usedAndAllocatedSpaceLabel.Visible = true;
-
-            // Modification du statut
-            currentStatusLabel.Text = STR_CONNECTED_STATUS;
         }
 
         /// <summary>
@@ -222,17 +184,11 @@ namespace DropBoxClient
         {
             // Met la valeur du token à null
             strToken = null;
+            Properties.Settings.Default.tab_byteProtectedToken = null;
+            // Arrête la surveillance du dossier
+            folderToSynchFileSystemWatcher.EnableRaisingEvents = false;
 
-            // Cache l'interface des paramètres et affiche l'interface de connexion
-            parametersPanel.Visible = false;
-            loginPanel.Visible = true;
-
-            // Cache les données concernat l'espace
-            spaceLabel.Visible = false;
-            usedAndAllocatedSpaceLabel.Visible = false;
-
-            // Remet l'icône Paramètres
-            parametersHomePictureBox.Image = bitmapParametersIcon;
+            showLoginInterface();
 
             // Modification du statut
             currentStatusLabel.Text = STR_WAITING_LOGIN_STATUS;
@@ -245,6 +201,9 @@ namespace DropBoxClient
         /// <param name="e">Données liées à l'événement</param>
         private void DropBoxClientForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            // Sauvegarde les paramètres d'application
+            Properties.Settings.Default.Save();
+
             // Si l'on clique sur le bouton "Non" 
             if (DialogResult.No == MessageBox.Show(STR_QUIT_BOX_MESSAGE, STR_QUIT_BOX_TITLE, MessageBoxButtons.YesNo, MessageBoxIcon.Warning))
             {
@@ -254,15 +213,24 @@ namespace DropBoxClient
         }
 
         /// <summary>
-        /// 
+        /// Permet de choisir le dossier à synchroniser
         /// </summary>
         /// <param name="sender">Contrôle provoquant l'événement</param>
         /// <param name="e">Données liées à l'événement</param>
         private void chooseFolderButton_Click(object sender, EventArgs e)
         {
+            // Si l'utilisateur choisit un dossier
             if(toSynchFolderBrowserDialog.ShowDialog() == DialogResult.OK)
             {
-                folderToSynchPathLabel.Text = toSynchFolderBrowserDialog.SelectedPath;
+                // Récupère son chemin
+                strFolderPath = toSynchFolderBrowserDialog.SelectedPath;
+                folderToSynchPathLabel.Text = strFolderPath;
+                Properties.Settings.Default.strFolderPath = strFolderPath;
+
+                // Surveille le dossier spécifié
+                folderToSynchFileSystemWatcher.Path = strFolderPath;
+
+                addToLogs("Le dossier à synchroniser a été changé en " + strFolderPath);
             }
         }
 
@@ -310,13 +278,13 @@ namespace DropBoxClient
         /// <summary>
         /// Récupère le token grâce au code fournit par l'utilisateur
         /// </summary>
-        private void getToken()
+        private bool getToken()
         {
             // Récupère le code de l'utilisateur
-            strCode = dropboxCodeTextBox.Text;
+            string strCode = dropboxCodeTextBox.Text;
 
             // Création de la requête avec l'url
-            HttpWebRequest postRequest = (HttpWebRequest)WebRequest.Create(strPostOauth2Token += "?code=" + Uri.EscapeDataString(strCode) + "&grant_type=" + Uri.EscapeDataString("authorization_code") + "&client_id=" + Uri.EscapeDataString(STR_APP_KEY) + "&client_secret=" + Uri.EscapeDataString(STR_APP_SECRET));
+            HttpWebRequest postRequest = (HttpWebRequest)WebRequest.Create(strPostOauth2Token + "?code=" + Uri.EscapeDataString(strCode) + "&grant_type=" + Uri.EscapeDataString("authorization_code") + "&client_id=" + Uri.EscapeDataString(STR_APP_KEY) + "&client_secret=" + Uri.EscapeDataString(STR_APP_SECRET));
             // Ajout de la méthode, verbe http
             postRequest.Method = "POST";
             // Spécification du type de contenu
@@ -336,16 +304,172 @@ namespace DropBoxClient
                 // Récupère le token
                 strToken = Convert.ToString(joToken["access_token"]);
 
-                DateTime dateNow = DateTime.Now;
-                list_strLogs.Add(Convert.ToString(dateNow) + " - Connexion effectuée avec succès");
+                // Convertit le token en byte
+                tab_byteToken = System.Text.Encoding.ASCII.GetBytes(strToken);
+
+                // Protège le token avec la méthode Protect de la classe ProtectedData
+                tab_byteToken = ProtectedData.Protect(tab_byteToken, null, DataProtectionScope.CurrentUser);
+                // Stocke le token protégé dans les paramètres de l'application afin de le conserver même à l'arrêt de celle-ci
+                Properties.Settings.Default.tab_byteProtectedToken = tab_byteToken;
+
+                addToLogs("Connexion effectuée avec succès");
+
+                return true;
             }
             catch (WebException WebE)
             {
                 // Récupère le message d'erreur et l'affiche dans une MessageBox
                 string strErreur = Convert.ToString(WebE.Message);
                 MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                addToLogs("Erreur " + strErreur);
+
+                return false;
             }
 
+        } // END getToken()
+
+        /// <summary>
+        /// Récupère le nom d'affichage de l'utilisateur
+        /// </summary>
+        private void getDisplayName()
+        {
+            // Crée le Header d'authentification
+            strAuthHeader = STR_TOKEN_TYPE + Uri.EscapeDataString(strToken);
+
+            // Crée la requête permettant d'obtenir le display_name
+            WebRequest postDisplayNameRequest = createPostRequest(strAuthHeader, strPostGetAccount);
+
+            try
+            {
+                // Envoi de la requête
+                WebResponse postDisplayNameResponse = postDisplayNameRequest.GetResponse();
+                // Récupération des données reçues et stockage dans un string
+                reader = new StreamReader(postDisplayNameResponse.GetResponseStream());
+                strJson = reader.ReadToEnd();
+                postDisplayNameResponse.Close();
+
+                // Création d'un objet JSON avec le string des données reçues
+                JObject joAccount = JObject.Parse(strJson);
+
+                // Récupère le display_name 
+                string strDisplayName = Convert.ToString(joAccount["name"]["display_name"]);
+                displayNameLabel.Text = strDisplayName;
+                connectedProfileLabel.Text = strDisplayName;
+            }
+            catch (WebException WebE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(WebE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                addToLogs("Erreur " + strErreur);
+            }
+        } // END getDisplayName()
+
+        /// <summary>
+        /// Récupère le stockage utilisé et le stockage alloué à l'utilisateur
+        /// </summary>
+        private void getSpaceUsage()
+        {
+            // Crée la requête permettant d'obtenir les informations liées au stockage
+            WebRequest postSpaceUsageRequest = createPostRequest(strAuthHeader, strPostGetSpaceUsage);
+            try
+            {
+                // Envoi de la requête
+                WebResponse postSpaceUsageResponse = postSpaceUsageRequest.GetResponse();
+                // Récupération des données reçues et stockage dans un string
+                reader = new StreamReader(postSpaceUsageResponse.GetResponseStream());
+                strJson = reader.ReadToEnd();
+                postSpaceUsageResponse.Close();
+
+                // Création d'un objet JSON avec le string des données reçues
+                JObject joSpaceUsage = JObject.Parse(strJson);
+
+                // Récupère le stockage utilisé et le stockage total (en octet)
+                double dblUsedSpace = Convert.ToDouble(joSpaceUsage["used"]);
+                double dblAllocatedSpace = Convert.ToDouble(joSpaceUsage["allocation"]["allocated"]);
+                string strUsedSpace;
+
+                // Si la conversion en Go donne un résultat plus petit que 0.1 Go
+                if (dblUsedSpace / 1000000000 < 0.1)
+                {
+                    // Convertit le résultat en Mo
+                    strUsedSpace = (dblUsedSpace / 1000000).ToString("0.## Mo");
+                }
+                else
+                {
+                    strUsedSpace = (dblUsedSpace / 1000000000).ToString("0.## Go");
+                }
+                // Convertit les valeurs en Go
+                string strAllocatedSpace = (dblAllocatedSpace / 1000000000).ToString("0.## Go");
+
+                usedAndAllocatedSpaceLabel.Text = string.Format("{0} / {1}", strUsedSpace, strAllocatedSpace);
+            }
+            catch (WebException WebE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(WebE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                addToLogs("Erreur " + strErreur);
+            }
+
+            // Affiche les données concernant l'espace
+            spaceLabel.Visible = true;
+            usedAndAllocatedSpaceLabel.Visible = true;
+        } // END getSpaceUsage()
+
+        /// <summary>
+        /// Affiche l'interface principale
+        /// </summary>
+        private void showMainInterface()
+        {
+            loginPanel.Visible = false;
+            dropboxCodeLabel.Visible = false;
+            dropboxCodeTextBox.Visible = false;
+            continueButton.Visible = false;
+            parametersPanel.Visible = false;
+            homePanel.Visible = true;
+
+            // Change l'icône en celui des paramètres
+            parametersHomePictureBox.Image = bitmapParametersIcon;
+        }
+
+        /// <summary>
+        /// Affiche l'interface de connexion 
+        /// </summary>
+        private void showLoginInterface()
+        {
+            parametersPanel.Visible = false;
+            homePanel.Visible = false;
+            spaceLabel.Visible = false;
+            usedAndAllocatedSpaceLabel.Visible = false;
+            loginPanel.Visible = true;
+        }
+
+        /// <summary>
+        /// Affiche l'interface des paramètres
+        /// </summary>
+        private void showParametersInterface()
+        {
+            homePanel.Visible = false;
+            loginPanel.Visible = false;
+            parametersPanel.Visible = true;
+
+            // Change l'icône en Home
+            parametersHomePictureBox.Image = bitmapHomeIcon;
+        }
+
+        /// <summary>
+        /// Ajoute une entrée au jounral des opérations
+        /// </summary>
+        /// <param name="strMessage">Message à ajouter dans le journal</param>
+        private void addToLogs(string strMessage)
+        {
+            // Récupère la date actuelle et ajoute une entrée dans le jounral des opérations
+            DateTime dateNow = DateTime.Now;
+            list_strLogs.Add(Convert.ToString(dateNow) + " - " + strMessage);
         }
     }
 }

@@ -33,6 +33,7 @@
             this.displayNameLabel = new System.Windows.Forms.Label();
             this.topPanel = new System.Windows.Forms.Panel();
             this.bottomPanel = new System.Windows.Forms.Panel();
+            this.usedAndAllocatedSpaceLabel = new System.Windows.Forms.Label();
             this.spaceLabel = new System.Windows.Forms.Label();
             this.currentStatusLabel = new System.Windows.Forms.Label();
             this.statusLabel = new System.Windows.Forms.Label();
@@ -61,7 +62,7 @@
             this.loginTextBox = new System.Windows.Forms.TextBox();
             this.loginLabel = new System.Windows.Forms.Label();
             this.loginButton = new System.Windows.Forms.Button();
-            this.usedAndAllocatedSpaceLabel = new System.Windows.Forms.Label();
+            this.folderToSynchFileSystemWatcher = new System.IO.FileSystemWatcher();
             ((System.ComponentModel.ISupportInitialize)(this.parametersHomePictureBox)).BeginInit();
             this.topPanel.SuspendLayout();
             this.bottomPanel.SuspendLayout();
@@ -72,6 +73,7 @@
             this.logsGroupBox.SuspendLayout();
             this.folderGroupBox.SuspendLayout();
             this.loginPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.folderToSynchFileSystemWatcher)).BeginInit();
             this.SuspendLayout();
             // 
             // parametersHomePictureBox
@@ -125,6 +127,16 @@
             this.bottomPanel.Name = "bottomPanel";
             this.bottomPanel.Size = new System.Drawing.Size(501, 46);
             this.bottomPanel.TabIndex = 4;
+            // 
+            // usedAndAllocatedSpaceLabel
+            // 
+            this.usedAndAllocatedSpaceLabel.AutoSize = true;
+            this.usedAndAllocatedSpaceLabel.Location = new System.Drawing.Point(371, 15);
+            this.usedAndAllocatedSpaceLabel.Name = "usedAndAllocatedSpaceLabel";
+            this.usedAndAllocatedSpaceLabel.Size = new System.Drawing.Size(12, 17);
+            this.usedAndAllocatedSpaceLabel.TabIndex = 6;
+            this.usedAndAllocatedSpaceLabel.Text = "-";
+            this.usedAndAllocatedSpaceLabel.Visible = false;
             // 
             // spaceLabel
             // 
@@ -394,15 +406,10 @@
             this.loginButton.UseVisualStyleBackColor = true;
             this.loginButton.Click += new System.EventHandler(this.loginButton_Click);
             // 
-            // usedAndAllocatedSpaceLabel
+            // folderToSynchFileSystemWatcher
             // 
-            this.usedAndAllocatedSpaceLabel.AutoSize = true;
-            this.usedAndAllocatedSpaceLabel.Location = new System.Drawing.Point(371, 15);
-            this.usedAndAllocatedSpaceLabel.Name = "usedAndAllocatedSpaceLabel";
-            this.usedAndAllocatedSpaceLabel.Size = new System.Drawing.Size(12, 17);
-            this.usedAndAllocatedSpaceLabel.TabIndex = 6;
-            this.usedAndAllocatedSpaceLabel.Text = "-";
-            this.usedAndAllocatedSpaceLabel.Visible = false;
+            this.folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+            this.folderToSynchFileSystemWatcher.SynchronizingObject = this;
             // 
             // DropBoxClientForm
             // 
@@ -440,6 +447,7 @@
             this.folderGroupBox.ResumeLayout(false);
             this.loginPanel.ResumeLayout(false);
             this.loginPanel.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.folderToSynchFileSystemWatcher)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -480,6 +488,7 @@
         private System.Windows.Forms.Label dropboxCodeLabel;
         private System.Windows.Forms.Button continueButton;
         private System.Windows.Forms.Label usedAndAllocatedSpaceLabel;
+        private System.IO.FileSystemWatcher folderToSynchFileSystemWatcher;
     }
 }
 
