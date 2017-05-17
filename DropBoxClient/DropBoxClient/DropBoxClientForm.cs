@@ -14,6 +14,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -46,6 +47,12 @@ namespace DropBoxClient
         private string strPostOauth2Token = "https://api.dropboxapi.com/oauth2/token";
         private string strPostGetAccount = "https://api.dropboxapi.com/2/users/get_current_account";
         private string strPostGetSpaceUsage = "https://api.dropboxapi.com/2/users/get_space_usage";
+
+        private string strPostCreateFolder = "https://api.dropboxapi.com/2/files/create_folder";
+        private string strPostDelete = "https://api.dropboxapi.com/2/files/delete";
+        private string strPostMove = "https://api.dropboxapi.com/2/files/move";
+        private string strPostUpload = "https://content.dropboxapi.com/2/files/upload";
+
 
         //////////// Variables pour l'authentification ////////////
         private string strToken; // Châine de caractère contenant le token
@@ -219,19 +226,58 @@ namespace DropBoxClient
         /// <param name="e">Données liées à l'événement</param>
         private void chooseFolderButton_Click(object sender, EventArgs e)
         {
+            folderToSynchFileSystemWatcher.EnableRaisingEvents = false;
+
             // Si l'utilisateur choisit un dossier
             if(toSynchFolderBrowserDialog.ShowDialog() == DialogResult.OK)
             {
                 // Récupère son chemin
                 strFolderPath = toSynchFolderBrowserDialog.SelectedPath;
-                folderToSynchPathLabel.Text = strFolderPath;
-                Properties.Settings.Default.strFolderPath = strFolderPath;
 
-                // Surveille le dossier spécifié
-                folderToSynchFileSystemWatcher.Path = strFolderPath;
+                // Crée un fichier pour tester si l'écriture est possible
+                string strTestFile = "Test.txt";
+                string strFilePath = System.IO.Path.Combine(strFolderPath, strTestFile);
 
-                addToLogs("Le dossier à synchroniser a été changé en " + strFolderPath);
+                // Par défaut, le dossier est considéré comme OK pour la synchronisation
+                bool boolIsFolderOK = true;
+
+                try // Essaie de créer un fichier
+                {
+                    System.IO.File.Create(strFilePath).Close();
+                }
+                catch (Exception FileE)
+                {
+                    boolIsFolderOK = false;
+                }
+                try // Essaie de supprimer le fichier
+                {
+                    System.IO.File.Delete(strFilePath);
+                }
+                catch (Exception FileE)
+                {
+                    boolIsFolderOK = false;
+                }
+
+                // Si le dossier est OK pour la synchronisation (Possède le droit NTFS "Modification")
+                if (boolIsFolderOK)
+                {
+                    // Enregistre le chemin du dossier
+                    folderToSynchPathLabel.Text = strFolderPath;
+                    Properties.Settings.Default.strFolderPath = strFolderPath;
+
+                    // Surveille le dossier spécifié
+                    folderToSynchFileSystemWatcher.Path = strFolderPath;
+
+                    addToLogs("Le dossier à synchroniser a été changé en " + strFolderPath);
+                }
+                else
+                {
+                    MessageBox.Show("Le dossier n'a pas été modifié car il ne possède pas les droits nécessaires", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    strFolderPath = Properties.Settings.Default.strFolderPath;
+                }
             }
+
+            folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
         }
 
         /// <summary>
@@ -470,6 +516,55 @@ namespace DropBoxClient
             // Récupère la date actuelle et ajoute une entrée dans le jounral des opérations
             DateTime dateNow = DateTime.Now;
             list_strLogs.Add(Convert.ToString(dateNow) + " - " + strMessage);
+        }
+
+        private void folderToSynchFileSystemWatcher_Changed(object sender, FileSystemEventArgs e)
+        {
+
+        }
+
+        private void folderToSynchFileSystemWatcher_Created(object sender, FileSystemEventArgs e)
+        {
+
+        }
+
+        private void folderToSynchFileSystemWatcher_Deleted(object sender, FileSystemEventArgs e)
+        {
+
+        }
+
+        private void folderToSynchFileSystemWatcher_Renamed(object sender, RenamedEventArgs e)
+        {
+            string strFolderPath = e.FullPath;
+            string strFolderName = e.Name;
+
+            WebRequest postRequest = createPostRequest(strAuthHeader, strPostCreateFolder);
+
+            postRequest.ContentType = "application/json";
+
+            string strPostBody = "{\"path\": \"" + strFolderName + "\","
+                + "\"autorename\": false }";
+            JObject joFolder = JObject.Parse(strPostBody);
+
+            //// Ajout du contenu du body de la requête s'il y en a un.
+            //if (strPostBody.Length > 0)
+            //{
+            //    using (Stream stream = postRequest.GetRequestStream())
+            //    {
+            //        byte[] content = Encoding.UTF8.GetBytes(strPostBody);
+            //        stream.Write(content, 0, content.Length);
+            //    }
+            //}
+
+            using (StreamWriter streamWriter = new StreamWriter(postRequest.GetRequestStream()))
+            {
+                streamWriter.Write(strPostBody);
+                streamWriter.Flush();
+                streamWriter.Close();
+            }
+            // Envoi de la requête
+            WebResponse postResponse = postRequest.GetResponse();
+
         }
     }
 }
