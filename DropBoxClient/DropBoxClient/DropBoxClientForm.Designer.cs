@@ -409,6 +409,7 @@
             // folderToSynchFileSystemWatcher
             // 
             this.folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+            this.folderToSynchFileSystemWatcher.IncludeSubdirectories = true;
             this.folderToSynchFileSystemWatcher.SynchronizingObject = this;
             this.folderToSynchFileSystemWatcher.Changed += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
             this.folderToSynchFileSystemWatcher.Created += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Created);

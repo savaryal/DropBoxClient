@@ -11,6 +11,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Linq;
 using System.Text;
@@ -52,6 +53,7 @@ namespace DropBoxClient
         private string strPostDelete = "https://api.dropboxapi.com/2/files/delete";
         private string strPostMove = "https://api.dropboxapi.com/2/files/move";
         private string strPostUpload = "https://content.dropboxapi.com/2/files/upload";
+        private string strPostListFolder = "https://api.dropboxapi.com/2/files/list_folder";
 
 
         //////////// Variables pour l'authentification ////////////
@@ -525,46 +527,160 @@ namespace DropBoxClient
 
         private void folderToSynchFileSystemWatcher_Created(object sender, FileSystemEventArgs e)
         {
+            string strRegEx = @"(Nouveau dossier)";
+            Regex regexNewFolder = new Regex(strRegEx);
 
+            if (regexNewFolder.Match(e.Name).Length == 0)
+            {
+                createFolder(e.FullPath);
+                uploadFile(e.FullPath);
+            }
         }
 
         private void folderToSynchFileSystemWatcher_Deleted(object sender, FileSystemEventArgs e)
         {
+            bool boolExsist = false;
 
+            WebRequest postListFolderRequest = createPostRequest(strAuthHeader, strPostListFolder);
+            postListFolderRequest.ContentType = "application/json";
+
+            string strPostBody = "{\"path\": \"\"}";
+            
+            // Ajout du contenu du body de la requête s'il y en a un.
+            if (strPostBody.Length > 0)
+            {
+                using (Stream stream = postListFolderRequest.GetRequestStream())
+                {
+                    byte[] content = Encoding.UTF8.GetBytes(strPostBody);
+                    stream.Write(content, 0, content.Length);
+
+                    stream.Flush();
+                    stream.Close();
+                }
+            }
+            WebResponse postListFolderResponse = postListFolderRequest.GetResponse();
+            // Récupération des données reçues et stockage dans un string
+            reader = new StreamReader(postListFolderResponse.GetResponseStream());
+            strJson = reader.ReadToEnd();
+            postListFolderResponse.Close();
+
+            JObject joEntries = JObject.Parse(strJson);
+            string strArray = Convert.ToString(joEntries["entries"]);
+
+            JArray jaFoldersFiles = JArray.Parse(strArray);
+
+            int intCommonPath = strFolderPath.Length;
+            string strFolderToDeletePath = e.FullPath.Substring(intCommonPath);
+
+            strFolderToDeletePath = strFolderToDeletePath.Replace("\\", "/");
+
+            for (int i = 0; i < jaFoldersFiles.Count; i++)
+            {
+                if(Convert.ToString(jaFoldersFiles[i]["path_display"]) == strFolderToDeletePath)
+                {
+                    boolExsist = true;
+                }
+            }
+
+            if(boolExsist)
+            {
+                WebRequest postRequest = createPostRequest(strAuthHeader, strPostDelete);
+                postRequest.ContentType = "application/json";
+
+                strPostBody = "{\"path\": \"" + strFolderToDeletePath + "\"}";
+
+                // Ajout du contenu du body de la requête s'il y en a un.
+                if (strPostBody.Length > 0)
+                {
+                    using (Stream stream = postRequest.GetRequestStream())
+                    {
+                        byte[] content = Encoding.UTF8.GetBytes(strPostBody);
+                        stream.Write(content, 0, content.Length);
+
+                        stream.Flush();
+                        stream.Close();
+                    }
+                }
+                WebResponse postResponse = postRequest.GetResponse();
+                postResponse.Close();
+            }
         }
 
         private void folderToSynchFileSystemWatcher_Renamed(object sender, RenamedEventArgs e)
         {
-            string strFolderPath = e.FullPath;
-            string strFolderName = e.Name;
+            string strRegEx = @"(Nouveau dossier)";
+            Regex regexNewFolder = new Regex(strRegEx);
 
-            WebRequest postRequest = createPostRequest(strAuthHeader, strPostCreateFolder);
-
-            postRequest.ContentType = "application/json";
-
-            string strPostBody = "{\"path\": \"" + strFolderName + "\","
-                + "\"autorename\": false }";
-            JObject joFolder = JObject.Parse(strPostBody);
-
-            //// Ajout du contenu du body de la requête s'il y en a un.
-            //if (strPostBody.Length > 0)
-            //{
-            //    using (Stream stream = postRequest.GetRequestStream())
-            //    {
-            //        byte[] content = Encoding.UTF8.GetBytes(strPostBody);
-            //        stream.Write(content, 0, content.Length);
-            //    }
-            //}
-
-            using (StreamWriter streamWriter = new StreamWriter(postRequest.GetRequestStream()))
+            if (regexNewFolder.Match(e.OldName) != null)
             {
-                streamWriter.Write(strPostBody);
-                streamWriter.Flush();
-                streamWriter.Close();
+                createFolder(e.FullPath);
             }
-            // Envoi de la requête
-            WebResponse postResponse = postRequest.GetResponse();
+        }
 
+        private void createFolder(string strFullPath)
+        {
+            DirectoryInfo newDirectory = new DirectoryInfo(strFullPath);
+        
+            bool boolExists = newDirectory.Exists;
+
+            if (boolExists)
+            {
+                int intCommonPath = strFolderPath.Length;
+                string strNewFolderPath = strFullPath.Substring(intCommonPath);
+
+                strNewFolderPath = strNewFolderPath.Replace("\\", "/");
+
+                WebRequest postRequest = createPostRequest(strAuthHeader, strPostCreateFolder);
+                postRequest.ContentType = "application/json";
+
+                string strPostBody = "{\"path\": \"" + strNewFolderPath + "\"}";
+
+                // Ajout du contenu JSON dans le corps de la requête
+                using (Stream stream = postRequest.GetRequestStream())
+                {
+                    byte[] content = Encoding.UTF8.GetBytes(strPostBody);
+                    stream.Write(content, 0, content.Length);
+
+                    stream.Flush();
+                    stream.Close();
+                }
+
+                WebResponse postResponse = postRequest.GetResponse();
+                postResponse.Close();
+            }
+        }
+
+        private void uploadFile(string strFullPath)
+        {
+            FileInfo newFile = new FileInfo(strFullPath);
+            bool boolExists = newFile.Exists;
+
+            if (boolExists)
+            {
+
+                int intCommonPath = strFolderPath.Length;
+                string strNewFilePath = strFullPath.Substring(intCommonPath);
+
+                strNewFilePath = strNewFilePath.Replace("\\", "/");
+
+                string strPostBody = "{\"path\": \"" + strNewFilePath + "\"}";
+
+                WebRequest postRequest = createPostRequest(strAuthHeader, strPostUpload);
+                postRequest.ContentType = "application/octet-stream";
+                postRequest.Headers.Add("Dropbox-API-Arg", strPostBody);
+
+                using (Stream stream = postRequest.GetRequestStream())
+                {
+                    byte[] content = File.ReadAllBytes(strFullPath);
+                    stream.Write(content, 0, content.Length);
+
+                    stream.Flush();
+                    stream.Close();
+                }
+
+                WebResponse postResponse = postRequest.GetResponse();
+                postResponse.Close();
+            }
         }
     }
 }
