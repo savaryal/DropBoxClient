@@ -39,6 +39,16 @@ namespace DropBoxClient
         private const string STR_WAITING_LOGIN_STATUS = "En attente de connexion à un compte Dropbox...";
         private const string STR_CONNECTED_STATUS = "Connecté";
 
+        // RegEx
+        // Crée le pattern que la RegEx doit chercher, ici exactement "Nouveau dossier"
+        private const string STR_REGEX_FOLDER = @"(Nouveau dossier)";
+        // Crée la RegEx avec le pattern 
+        Regex regexNewFolder = new Regex(STR_REGEX_FOLDER);
+        // Crée le pattern que la RegEx doit chercher, ici exactement "Nouveau dossier"
+        private const string STR_REGEX_FILE = @"(Nouveau)";
+        // Crée la RegEx avec le pattern 
+        Regex regexNewFile = new Regex(STR_REGEX_FILE);
+
         //////////// Icônes ////////////
         private Bitmap bitmapHomeIcon = DropBoxClient.Properties.Resources.homeIcon;
         private Bitmap bitmapParametersIcon = DropBoxClient.Properties.Resources.parametersIcon;
@@ -70,6 +80,10 @@ namespace DropBoxClient
         // Chemin du dossier à synchroniser
         private string strFolderPath;
 
+        int intY = 0;
+
+        private List<Label> list_logsLabels = new List<Label>();
+
         StreamReader reader;
 
         /// <summary>
@@ -78,6 +92,17 @@ namespace DropBoxClient
         public DropBoxClientForm()
         {
             InitializeComponent();
+
+            // Si le chemin du dossier à synchroniser est mémorisé  
+            if (Properties.Settings.Default.strFolderPath != null)
+            {
+                // Récupère le chemin du dossier
+                strFolderPath = Properties.Settings.Default.strFolderPath;
+                folderToSynchPathLabel.Text = strFolderPath;
+
+                // Surveille le dossier spécifié
+                folderToSynchFileSystemWatcher.Path = strFolderPath;
+            }
 
             // Initialise des paramètres de logsSaveFileDialog
             logsSaveFileDialog.Filter = "txt files (*.txt)|*.txt";
@@ -102,18 +127,14 @@ namespace DropBoxClient
                 // Modification du statut
                 currentStatusLabel.Text = STR_CONNECTED_STATUS;
 
-            }   
-            // Si le chemin du dossier à synchroniser est mémorisé  
-            if(Properties.Settings.Default.strFolderPath != null)
-            {
-                // Récupère le chemin du dossier
-                strFolderPath = Properties.Settings.Default.strFolderPath;
-                folderToSynchPathLabel.Text = strFolderPath;
+                if (Properties.Settings.Default.strFolderPath != null)
+                {
+                    synchronizeLocalToDropbox();
 
-                // Surveille le dossier spécifié
-                folderToSynchFileSystemWatcher.Path = strFolderPath;
-            }      
-    }
+                    addToLogs("Synchronisation effectuée avec succès");
+                }
+            }       
+        }
 
         //////////// INTERACTIONS PROVENANT D'ELEMENTS DU GUI ////////////
 
@@ -167,6 +188,11 @@ namespace DropBoxClient
                 // Obtient les informations du compte
                 getDisplayName();
                 getSpaceUsage();
+
+                if (Properties.Settings.Default.strFolderPath != null)
+                {
+                    synchronizeLocalToDropbox();
+                }
 
                 // Affiche l'interface principale
                 showMainInterface();
@@ -278,9 +304,8 @@ namespace DropBoxClient
                     strFolderPath = Properties.Settings.Default.strFolderPath;
                 }
             }
-
             folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
-        }
+        } // END chooseFolderButton_Click()
 
         /// <summary>
         /// Sauvegarde le journal des opérations dans un fichier texte à l'emplacement désiré
@@ -518,157 +543,196 @@ namespace DropBoxClient
             // Récupère la date actuelle et ajoute une entrée dans le jounral des opérations
             DateTime dateNow = DateTime.Now;
             list_strLogs.Add(Convert.ToString(dateNow) + " - " + strMessage);
+
+            Label logsTmpLabel = new Label();
+            logsTmpLabel.AutoSize = false;
+            logsTmpLabel.Font = new System.Drawing.Font("Century Gothic", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            logsTmpLabel.Size = new System.Drawing.Size(475, 50);
+            logsTmpLabel.Location = new System.Drawing.Point(0, intY);
+            logsTmpLabel.BorderStyle = BorderStyle.FixedSingle;
+            logsTmpLabel.Text = Convert.ToString(dateNow) + " - " + strMessage;
+
+            logsPanel.Controls.Add(logsTmpLabel);
+
+            intY += 50;
         }
 
-        private void folderToSynchFileSystemWatcher_Changed(object sender, FileSystemEventArgs e)
-        {
-
-        }
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="sender">Contrôle provoquant l'événement</param>
+        /// <param name="e">Données liées à l'événement</param>
         private void folderToSynchFileSystemWatcher_Created(object sender, FileSystemEventArgs e)
         {
-            string strRegEx = @"(Nouveau dossier)";
-            Regex regexNewFolder = new Regex(strRegEx);
+            // L'évènement Created réagit dès la création du dossier, même s'il n'a pas encore été nommé.
+            // C'est pour cela que si le dossier est nommé "Nouveau dossier", il ne le crée pas tout de suite,
+            // sa création est faite dans l'évènement Renamed une fois son nom défini.
+            // Si le résultat ne correspond pas à "Nouveau dossier"
+            //if (regexNewFolder.Match(e.Name).Length == 0)
+            //{   // Crée un dossier
+                createFolder(e.FullPath, strFolderPath);
 
-            if (regexNewFolder.Match(e.Name).Length == 0)
-            {
-                createFolder(e.FullPath);
-                uploadFile(e.FullPath);
-            }
+                //if (regexNewFile.Match(e.Name).Length == 0)
+                //{   // Upload le fichier
+                    uploadFile(e.FullPath);
+                //}
+            //}
         }
 
+        /// <summary>
+        /// Détecte la suppression d'un dossier ou fichier et le supprime de Dropbox
+        /// </summary>
+        /// <param name="sender">Contrôle provoquant l'événement</param>
+        /// <param name="e">Données liées à l'événement</param>
         private void folderToSynchFileSystemWatcher_Deleted(object sender, FileSystemEventArgs e)
         {
+            // Par défaut, l'objet à supprimer n'existe pas sur Dropbox
             bool boolExsist = false;
 
-            WebRequest postListFolderRequest = createPostRequest(strAuthHeader, strPostListFolder);
-            postListFolderRequest.ContentType = "application/json";
+            // Récupère la liste de tous les dossiers et fichiers présents sur Dropbox
+            JArray jaFoldersFiles = listAllFoldersAndFiles();
 
-            string strPostBody = "{\"path\": \"\"}";
-            
-            // Ajout du contenu du body de la requête s'il y en a un.
-            if (strPostBody.Length > 0)
-            {
-                using (Stream stream = postListFolderRequest.GetRequestStream())
-                {
-                    byte[] content = Encoding.UTF8.GetBytes(strPostBody);
-                    stream.Write(content, 0, content.Length);
-
-                    stream.Flush();
-                    stream.Close();
-                }
-            }
-            WebResponse postListFolderResponse = postListFolderRequest.GetResponse();
-            // Récupération des données reçues et stockage dans un string
-            reader = new StreamReader(postListFolderResponse.GetResponseStream());
-            strJson = reader.ReadToEnd();
-            postListFolderResponse.Close();
-
-            JObject joEntries = JObject.Parse(strJson);
-            string strArray = Convert.ToString(joEntries["entries"]);
-
-            JArray jaFoldersFiles = JArray.Parse(strArray);
-
+            // Calcule le nombre de caractères du chemin du dossier synchronisé
             int intCommonPath = strFolderPath.Length;
+            // Enlève le chemin du dossier synchronisé du chemin du dossier ou fichier à supprimer
             string strFolderToDeletePath = e.FullPath.Substring(intCommonPath);
-
+            // Remplace les "\\" du chemin en "/" afin d'avoir le chemin au format de ceux de Dropbox
             strFolderToDeletePath = strFolderToDeletePath.Replace("\\", "/");
 
+            // Parcourt la liste de tous les dossiers et fichiers présents sur Dropbox
             for (int i = 0; i < jaFoldersFiles.Count; i++)
-            {
-                if(Convert.ToString(jaFoldersFiles[i]["path_display"]) == strFolderToDeletePath)
-                {
+            {   
+                // Si le chemin du dossier ou fichier sur Dropbox est identique à celui qu'il faut supprimer
+                if(Convert.ToString(jaFoldersFiles[i]["path_lower"]) == strFolderToDeletePath.ToLower())
+                {   // Le dossier ou fichier est existant
                     boolExsist = true;
                 }
             }
 
+            // Si le dossier ou fichier est existant
             if(boolExsist)
             {
+                // Création de la requête à l'API
                 WebRequest postRequest = createPostRequest(strAuthHeader, strPostDelete);
                 postRequest.ContentType = "application/json";
 
-                strPostBody = "{\"path\": \"" + strFolderToDeletePath + "\"}";
+                // Chemin du dossier ou fichier à supprimer en format JSON
+                string strJSONParam = "{\"path\": \""+ strFolderToDeletePath + "\"}";
 
-                // Ajout du contenu du body de la requête s'il y en a un.
-                if (strPostBody.Length > 0)
+                // Ajout du contenu JSON dans le corps de la requête
+                if (strJSONParam.Length > 0)
                 {
                     using (Stream stream = postRequest.GetRequestStream())
                     {
-                        byte[] content = Encoding.UTF8.GetBytes(strPostBody);
+                        byte[] content = Encoding.UTF8.GetBytes(strJSONParam);
                         stream.Write(content, 0, content.Length);
 
                         stream.Flush();
                         stream.Close();
                     }
                 }
+                // Envoi et fermeture de la requête
                 WebResponse postResponse = postRequest.GetResponse();
                 postResponse.Close();
+
+                addToLogs(strFolderToDeletePath + " a été supprimé.");
             }
         }
 
+        /// <summary>
+        /// Détecte quand un fichier ou dossier est renommé
+        /// </summary>
+        /// <param name="sender">Contrôle provoquant l'événement</param>
+        /// <param name="e">Données liées à l'événement</param>
         private void folderToSynchFileSystemWatcher_Renamed(object sender, RenamedEventArgs e)
         {
-            string strRegEx = @"(Nouveau dossier)";
-            Regex regexNewFolder = new Regex(strRegEx);
-
+            // Si le nom d'avant du dossier contenait "Nouveau dossier"
             if (regexNewFolder.Match(e.OldName) != null)
-            {
-                createFolder(e.FullPath);
+            {   // Crée le dossier avec son chemin actuel
+                createFolder(e.FullPath, strFolderPath);
+            }
+            // Si le nom précédant contenait "Nouveau"
+            else if (regexNewFile.Match(e.OldName) != null)
+            {   // Upload le fichier
+                uploadFile(e.FullPath);
             }
         }
 
-        private void createFolder(string strFullPath)
+        /// <summary>
+        /// Crée un nouveau dossier sur Dropbox
+        /// </summary>
+        /// <param name="strFullPath">Chemin complet du dossier local</param>
+        private void createFolder(string strFullPath, string strParentFolderPath)
         {
             DirectoryInfo newDirectory = new DirectoryInfo(strFullPath);
-        
+            
+            // Vérifie que le chemin donné est bien un dossier
             bool boolExists = newDirectory.Exists;
 
+            // Si le dossier existe 
             if (boolExists)
             {
-                int intCommonPath = strFolderPath.Length;
+                // Calcule le nombre de caractères du chemin du dossier synchronisé
+                int intCommonPath = strParentFolderPath.Length;
+                // Enlève le chemin du dossier synchronisé du chemin du dossier à créer
                 string strNewFolderPath = strFullPath.Substring(intCommonPath);
-
+                // Remplace les "\\" du chemin en "/" afin d'avoir le chemin au format de ceux de Dropbox
                 strNewFolderPath = strNewFolderPath.Replace("\\", "/");
 
+                // Création de la requête à l'API
                 WebRequest postRequest = createPostRequest(strAuthHeader, strPostCreateFolder);
                 postRequest.ContentType = "application/json";
 
-                string strPostBody = "{\"path\": \"" + strNewFolderPath + "\"}";
+                // Chemin du dossier ou fichier à supprimer en format JSON
+                string strJSONparam = "{\"path\": \"" + strNewFolderPath + "\"}";
 
                 // Ajout du contenu JSON dans le corps de la requête
                 using (Stream stream = postRequest.GetRequestStream())
                 {
-                    byte[] content = Encoding.UTF8.GetBytes(strPostBody);
+                    byte[] content = Encoding.UTF8.GetBytes(strJSONparam);
                     stream.Write(content, 0, content.Length);
 
                     stream.Flush();
                     stream.Close();
                 }
-
+                // Envoi et fermeture de la requête
                 WebResponse postResponse = postRequest.GetResponse();
                 postResponse.Close();
+
+                addToLogs("Le dossier " + strNewFolderPath + " a été créé");
             }
         }
 
+        /// <summary>
+        /// Upload un fichier sur Dropbox
+        /// </summary>
+        /// <param name="strFullPath">Chemin complet du fichier local</param>
         private void uploadFile(string strFullPath)
         {
             FileInfo newFile = new FileInfo(strFullPath);
+
+            // Vérifie que le chemin donné est bien un fichier
             bool boolExists = newFile.Exists;
 
+            // Si le fichier existe
             if (boolExists)
             {
-
+                // Calcule le nombre de caractères du chemin du dossier synchronisé
                 int intCommonPath = strFolderPath.Length;
+                // Enlève le chemin du dossier synchronisé du chemin du fichier à envoyer
                 string strNewFilePath = strFullPath.Substring(intCommonPath);
-
+                // Remplace les "\\" du chemin en "/" afin d'avoir le chemin au format de ceux de Dropbox
                 strNewFilePath = strNewFilePath.Replace("\\", "/");
 
-                string strPostBody = "{\"path\": \"" + strNewFilePath + "\"}";
+                // Chemin du fichier à envoyer en format JSON
+                string strJSONparam = "{\"path\": \"" + strNewFilePath + "\"}"; 
 
+                // Création de la requête à l'API
                 WebRequest postRequest = createPostRequest(strAuthHeader, strPostUpload);
                 postRequest.ContentType = "application/octet-stream";
-                postRequest.Headers.Add("Dropbox-API-Arg", strPostBody);
+                postRequest.Headers.Add("Dropbox-API-Arg", strJSONparam);
 
+                // Ajoute tout le contenu du fichier dans le corps de la requête sous forme d'octet
                 using (Stream stream = postRequest.GetRequestStream())
                 {
                     byte[] content = File.ReadAllBytes(strFullPath);
@@ -677,9 +741,147 @@ namespace DropBoxClient
                     stream.Flush();
                     stream.Close();
                 }
-
+                // Envoi et fermeture de la requête
                 WebResponse postResponse = postRequest.GetResponse();
                 postResponse.Close();
+            }
+        }
+
+        /// <summary>
+        /// Retourne un tableau JSON contenant la liste de tous les dossiers et fichiers présents sur Dropbox
+        /// </summary>
+        /// <returns>jaFoldersFiles : Tableau JSON contenant la liste des dossiers et fichiers sur Dropbox</returns>
+        private JArray listAllFoldersAndFiles()
+        {
+            // Création de la requête à l'API
+            WebRequest postListFolderRequest = createPostRequest(strAuthHeader, strPostListFolder);
+            postListFolderRequest.ContentType = "application/json";
+
+            // Chemin du dossier racine de Dropbox en JSON
+            string strJSONparam = "{\"path\": \"\", \"recursive\": true}";
+
+            // Ajout du contenu JSON dans le corps de la requête
+            if (strJSONparam.Length > 0)
+            {
+                using (Stream stream = postListFolderRequest.GetRequestStream())
+                {
+                    byte[] content = Encoding.UTF8.GetBytes(strJSONparam);
+                    stream.Write(content, 0, content.Length);
+
+                    stream.Flush();
+                    stream.Close();
+                }
+            }
+            // Envoi de la requête
+            WebResponse postListFolderResponse = postListFolderRequest.GetResponse();
+            // Récupération des données reçues et stockage dans un string
+            reader = new StreamReader(postListFolderResponse.GetResponseStream());
+            strJson = reader.ReadToEnd();
+            // Fermeture de la requête
+            postListFolderResponse.Close();
+
+            // Création d'un objet JSON avec le string des données reçues
+            JObject joEntries = JObject.Parse(strJson);
+            // Récupération du tableau dans un string
+            string strArray = Convert.ToString(joEntries["entries"]);
+            // Création d'un tableau JSON
+            JArray jaFoldersFiles = JArray.Parse(strArray);
+
+            return jaFoldersFiles;
+        }
+
+        private void folderToSynchFileSystemWatcher_Changed(object sender, FileSystemEventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// Lance la synchronisation des dossiers et fichiers du local au distant
+        /// </summary>
+        private void synchronizeLocalToDropbox()
+        {
+            JArray jaAllFoldersAndFiles = listAllFoldersAndFiles();
+
+            // Répertoire synchronisé avec Dropbox
+            DirectoryInfo root = new DirectoryInfo(Properties.Settings.Default.strFolderPath);
+
+            synchronizeFile(root, jaAllFoldersAndFiles);
+            synchronizeFolder(root, jaAllFoldersAndFiles);
+        }
+
+        /// <summary>
+        /// Synchronise les dossiers
+        /// </summary>
+        /// <param name="root">Dossier parent du dossier à synchroniser</param>
+        /// <param name="jaAllFoldersAndFiles">Tableau JSON contenant la liste des fichiers et dossiers sur Dropbox</param>
+        private void synchronizeFolder(DirectoryInfo root, JArray jaAllFoldersAndFiles)
+        {
+            foreach (DirectoryInfo directory in root.EnumerateDirectories())
+            {
+                bool boolExistAlready = false;
+                // Calcule le nombre de caractères du chemin du dossier synchronisé
+                int intCommonPath = strFolderPath.Length;
+
+                // Parcourt la liste de tous les dossiers et fichiers présents sur Dropbox
+                for (int i = 0; i < jaAllFoldersAndFiles.Count; i++)
+                {
+                    // Enlève le chemin du dossier synchronisé du chemin du fichier à envoyer
+                    string strDirectoryPath = directory.FullName.Substring(intCommonPath);
+                    // Remplace les "\\" du chemin en "/" afin d'avoir le chemin au format de ceux de Dropbox
+                    strDirectoryPath = strDirectoryPath.Replace("\\", "/");
+
+                    // Si le chemin du dossier ou fichier sur Dropbox est identique
+                    if (Convert.ToString(jaAllFoldersAndFiles[i]["path_lower"]) == strDirectoryPath.ToLower())
+                    {   // Le dossier ou fichier est existant
+                        boolExistAlready = true;
+                    }
+                }
+                if (!boolExistAlready)
+                {
+                    createFolder(directory.FullName, strFolderPath);
+                    synchronizeFile(directory, jaAllFoldersAndFiles);
+                    synchronizeFolder(directory, jaAllFoldersAndFiles);
+                }
+                else
+                {
+                    synchronizeFile(directory, jaAllFoldersAndFiles);
+                    synchronizeFolder(directory, jaAllFoldersAndFiles);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Synchronise les fichiers
+        /// </summary>
+        /// <param name="root">Dossier parent du dossier à synchroniser</param>
+        /// <param name="jaAllFoldersAndFiles">Tableau JSON contenant la liste des fichiers et dossiers sur Dropbox</param>
+        private void synchronizeFile(DirectoryInfo root, JArray jaAllFoldersAndFiles)
+        {
+            // Pour chaque fichier, récupère le texte
+            foreach (FileInfo file in root.EnumerateFiles())
+            {
+                bool boolExistAlready = false;
+                // Calcule le nombre de caractères du chemin du dossier synchronisé
+                int intCommonPath = root.FullName.Length;
+
+                // Parcourt la liste de tous les dossiers et fichiers présents sur Dropbox
+                for (int i = 0; i < jaAllFoldersAndFiles.Count; i++)
+                {
+                    // Enlève le chemin du dossier synchronisé du chemin du fichier à envoyer
+                    string strFilePath = file.FullName.Substring(intCommonPath);
+                    // Remplace les "\\" du chemin en "/" afin d'avoir le chemin au format de ceux de Dropbox
+                    strFilePath = strFilePath.Replace("\\", "/");
+
+                    // Si le chemin du dossier ou fichier sur Dropbox est identique
+                    if (Convert.ToString(jaAllFoldersAndFiles[i]["path_lower"]) == strFilePath.ToLower())
+                    {   // Le dossier ou fichier est existant
+                        boolExistAlready = true;
+                    }
+                }
+                if (!boolExistAlready)
+                {
+                    uploadFile(file.FullName);
+                }
             }
         }
     }
