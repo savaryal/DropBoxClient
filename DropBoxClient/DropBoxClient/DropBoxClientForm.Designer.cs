@@ -412,8 +412,8 @@
             this.folderToSynchFileSystemWatcher.IncludeSubdirectories = true;
             this.folderToSynchFileSystemWatcher.SynchronizingObject = this;
             this.folderToSynchFileSystemWatcher.Changed += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
-            this.folderToSynchFileSystemWatcher.Created += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Created);
-            this.folderToSynchFileSystemWatcher.Deleted += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Deleted);
+            this.folderToSynchFileSystemWatcher.Created += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
+            this.folderToSynchFileSystemWatcher.Deleted += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
             this.folderToSynchFileSystemWatcher.Renamed += new System.IO.RenamedEventHandler(this.folderToSynchFileSystemWatcher_Renamed);
             // 
             // DropBoxClientForm
