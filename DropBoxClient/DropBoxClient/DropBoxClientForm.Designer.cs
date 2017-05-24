@@ -434,6 +434,7 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "DropBoxClient";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.DropBoxClientForm_FormClosing);
+            this.Shown += new System.EventHandler(this.DropBoxClientForm_Shown);
             ((System.ComponentModel.ISupportInitialize)(this.parametersHomePictureBox)).EndInit();
             this.topPanel.ResumeLayout(false);
             this.topPanel.PerformLayout();
