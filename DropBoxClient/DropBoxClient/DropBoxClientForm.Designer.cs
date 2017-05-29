@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.parametersHomePictureBox = new System.Windows.Forms.PictureBox();
             this.userLabel = new System.Windows.Forms.Label();
             this.displayNameLabel = new System.Windows.Forms.Label();
@@ -41,6 +42,7 @@
             this.logsLabel = new System.Windows.Forms.Label();
             this.homePanel = new System.Windows.Forms.Panel();
             this.parametersPanel = new System.Windows.Forms.Panel();
+            this.parametersLabel = new System.Windows.Forms.Label();
             this.profileGroupBox = new System.Windows.Forms.GroupBox();
             this.connectedProfileLabel = new System.Windows.Forms.Label();
             this.logoutButton = new System.Windows.Forms.Button();
@@ -49,7 +51,6 @@
             this.logsGroupBox = new System.Windows.Forms.GroupBox();
             this.saveLogsLabel = new System.Windows.Forms.Label();
             this.saveLogsButton = new System.Windows.Forms.Button();
-            this.parametersLabel = new System.Windows.Forms.Label();
             this.folderGroupBox = new System.Windows.Forms.GroupBox();
             this.chooseFolderButton = new System.Windows.Forms.Button();
             this.folderToSynchPathLabel = new System.Windows.Forms.Label();
@@ -63,6 +64,7 @@
             this.loginLabel = new System.Windows.Forms.Label();
             this.loginButton = new System.Windows.Forms.Button();
             this.folderToSynchFileSystemWatcher = new System.IO.FileSystemWatcher();
+            this.checkModificationTimer = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.parametersHomePictureBox)).BeginInit();
             this.topPanel.SuspendLayout();
             this.bottomPanel.SuspendLayout();
@@ -131,9 +133,10 @@
             // usedAndAllocatedSpaceLabel
             // 
             this.usedAndAllocatedSpaceLabel.AutoSize = true;
-            this.usedAndAllocatedSpaceLabel.Location = new System.Drawing.Point(371, 15);
+            this.usedAndAllocatedSpaceLabel.Font = new System.Drawing.Font("Century Gothic", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.usedAndAllocatedSpaceLabel.Location = new System.Drawing.Point(391, 15);
             this.usedAndAllocatedSpaceLabel.Name = "usedAndAllocatedSpaceLabel";
-            this.usedAndAllocatedSpaceLabel.Size = new System.Drawing.Size(12, 17);
+            this.usedAndAllocatedSpaceLabel.Size = new System.Drawing.Size(12, 16);
             this.usedAndAllocatedSpaceLabel.TabIndex = 6;
             this.usedAndAllocatedSpaceLabel.Text = "-";
             this.usedAndAllocatedSpaceLabel.Visible = false;
@@ -141,28 +144,30 @@
             // spaceLabel
             // 
             this.spaceLabel.AutoSize = true;
-            this.spaceLabel.Location = new System.Drawing.Point(272, 15);
+            this.spaceLabel.Font = new System.Drawing.Font("Century Gothic", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.spaceLabel.Location = new System.Drawing.Point(308, 15);
             this.spaceLabel.Name = "spaceLabel";
-            this.spaceLabel.Size = new System.Drawing.Size(101, 17);
+            this.spaceLabel.Size = new System.Drawing.Size(85, 16);
             this.spaceLabel.TabIndex = 2;
             this.spaceLabel.Text = "Espace utilisé :";
             this.spaceLabel.Visible = false;
             // 
             // currentStatusLabel
             // 
-            this.currentStatusLabel.AutoSize = true;
+            this.currentStatusLabel.Font = new System.Drawing.Font("Century Gothic", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.currentStatusLabel.Location = new System.Drawing.Point(63, 15);
             this.currentStatusLabel.Name = "currentStatusLabel";
-            this.currentStatusLabel.Size = new System.Drawing.Size(328, 17);
+            this.currentStatusLabel.Size = new System.Drawing.Size(288, 17);
             this.currentStatusLabel.TabIndex = 1;
             this.currentStatusLabel.Text = "En attente de connexion à un compte Dropbox...";
             // 
             // statusLabel
             // 
             this.statusLabel.AutoSize = true;
+            this.statusLabel.Font = new System.Drawing.Font("Century Gothic", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.statusLabel.Location = new System.Drawing.Point(12, 15);
             this.statusLabel.Name = "statusLabel";
-            this.statusLabel.Size = new System.Drawing.Size(54, 17);
+            this.statusLabel.Size = new System.Drawing.Size(47, 16);
             this.statusLabel.TabIndex = 0;
             this.statusLabel.Text = "Statut :";
             // 
@@ -170,7 +175,7 @@
             // 
             this.logsPanel.AutoScroll = true;
             this.logsPanel.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-            this.logsPanel.Location = new System.Drawing.Point(12, 45);
+            this.logsPanel.Location = new System.Drawing.Point(12, 47);
             this.logsPanel.Name = "logsPanel";
             this.logsPanel.Size = new System.Drawing.Size(477, 473);
             this.logsPanel.TabIndex = 5;
@@ -187,8 +192,8 @@
             // 
             // homePanel
             // 
-            this.homePanel.Controls.Add(this.logsPanel);
             this.homePanel.Controls.Add(this.logsLabel);
+            this.homePanel.Controls.Add(this.logsPanel);
             this.homePanel.Location = new System.Drawing.Point(0, 53);
             this.homePanel.Name = "homePanel";
             this.homePanel.Size = new System.Drawing.Size(501, 523);
@@ -197,16 +202,26 @@
             // 
             // parametersPanel
             // 
+            this.parametersPanel.Controls.Add(this.parametersLabel);
             this.parametersPanel.Controls.Add(this.profileGroupBox);
             this.parametersPanel.Controls.Add(this.appStartingGroupBox);
             this.parametersPanel.Controls.Add(this.logsGroupBox);
-            this.parametersPanel.Controls.Add(this.parametersLabel);
             this.parametersPanel.Controls.Add(this.folderGroupBox);
             this.parametersPanel.Location = new System.Drawing.Point(0, 53);
             this.parametersPanel.Name = "parametersPanel";
             this.parametersPanel.Size = new System.Drawing.Size(501, 523);
             this.parametersPanel.TabIndex = 8;
             this.parametersPanel.Visible = false;
+            // 
+            // parametersLabel
+            // 
+            this.parametersLabel.AutoSize = true;
+            this.parametersLabel.Font = new System.Drawing.Font("Century Gothic", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.parametersLabel.Location = new System.Drawing.Point(193, 11);
+            this.parametersLabel.Name = "parametersLabel";
+            this.parametersLabel.Size = new System.Drawing.Size(115, 23);
+            this.parametersLabel.TabIndex = 1;
+            this.parametersLabel.Text = "Paramètres";
             // 
             // profileGroupBox
             // 
@@ -259,6 +274,7 @@
             this.appStartingCheckBox.TabIndex = 0;
             this.appStartingCheckBox.Text = "Démarrer l\'application au lancement de la session";
             this.appStartingCheckBox.UseVisualStyleBackColor = true;
+            this.appStartingCheckBox.CheckedChanged += new System.EventHandler(this.appStartingCheckBox_CheckedChanged);
             // 
             // logsGroupBox
             // 
@@ -289,16 +305,6 @@
             this.saveLogsButton.Text = "Sauvegarder";
             this.saveLogsButton.UseVisualStyleBackColor = true;
             this.saveLogsButton.Click += new System.EventHandler(this.saveLogsButton_Click);
-            // 
-            // parametersLabel
-            // 
-            this.parametersLabel.AutoSize = true;
-            this.parametersLabel.Font = new System.Drawing.Font("Century Gothic", 14.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.parametersLabel.Location = new System.Drawing.Point(193, 11);
-            this.parametersLabel.Name = "parametersLabel";
-            this.parametersLabel.Size = new System.Drawing.Size(115, 23);
-            this.parametersLabel.TabIndex = 1;
-            this.parametersLabel.Text = "Paramètres";
             // 
             // folderGroupBox
             // 
@@ -416,16 +422,21 @@
             this.folderToSynchFileSystemWatcher.Deleted += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
             this.folderToSynchFileSystemWatcher.Renamed += new System.IO.RenamedEventHandler(this.folderToSynchFileSystemWatcher_Renamed);
             // 
+            // checkModificationTimer
+            // 
+            this.checkModificationTimer.Interval = 10000;
+            this.checkModificationTimer.Tick += new System.EventHandler(this.checkModificationTimer_Tick);
+            // 
             // DropBoxClientForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 17F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(501, 628);
+            this.Controls.Add(this.bottomPanel);
+            this.Controls.Add(this.topPanel);
             this.Controls.Add(this.loginPanel);
             this.Controls.Add(this.parametersPanel);
             this.Controls.Add(this.homePanel);
-            this.Controls.Add(this.bottomPanel);
-            this.Controls.Add(this.topPanel);
             this.Font = new System.Drawing.Font("Century Gothic", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Margin = new System.Windows.Forms.Padding(4);
@@ -495,6 +506,7 @@
         private System.Windows.Forms.Button continueButton;
         private System.Windows.Forms.Label usedAndAllocatedSpaceLabel;
         private System.IO.FileSystemWatcher folderToSynchFileSystemWatcher;
+        private System.Windows.Forms.Timer checkModificationTimer;
     }
 }
 

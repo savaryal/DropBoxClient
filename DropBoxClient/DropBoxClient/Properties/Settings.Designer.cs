@@ -45,5 +45,17 @@ namespace DropBoxClient.Properties {
                 this["strFolderPath"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool boolCheckState {
+            get {
+                return ((bool)(this["boolCheckState"]));
+            }
+            set {
+                this["boolCheckState"] = value;
+            }
+        }
     }
 }
