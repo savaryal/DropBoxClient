@@ -414,7 +414,6 @@
             // 
             // folderToSynchFileSystemWatcher
             // 
-            this.folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
             this.folderToSynchFileSystemWatcher.IncludeSubdirectories = true;
             this.folderToSynchFileSystemWatcher.SynchronizingObject = this;
             this.folderToSynchFileSystemWatcher.Changed += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
@@ -424,6 +423,7 @@
             // 
             // checkModificationTimer
             // 
+            this.checkModificationTimer.Enabled = true;
             this.checkModificationTimer.Interval = 10000;
             this.checkModificationTimer.Tick += new System.EventHandler(this.checkModificationTimer_Tick);
             // 
