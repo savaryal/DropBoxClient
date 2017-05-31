@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(DropBoxClientForm));
             this.parametersHomePictureBox = new System.Windows.Forms.PictureBox();
             this.userLabel = new System.Windows.Forms.Label();
             this.displayNameLabel = new System.Windows.Forms.Label();
@@ -414,6 +415,7 @@
             // 
             // folderToSynchFileSystemWatcher
             // 
+            this.folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
             this.folderToSynchFileSystemWatcher.IncludeSubdirectories = true;
             this.folderToSynchFileSystemWatcher.SynchronizingObject = this;
             this.folderToSynchFileSystemWatcher.Changed += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
@@ -439,6 +441,7 @@
             this.Controls.Add(this.homePanel);
             this.Font = new System.Drawing.Font("Century Gothic", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;
             this.Name = "DropBoxClientForm";

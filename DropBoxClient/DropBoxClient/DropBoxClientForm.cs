@@ -6,17 +6,12 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Win32;
 using System.Windows.Forms;
 
@@ -214,8 +209,18 @@ namespace DropBoxClient
                 // Modification du statut
                 currentStatusLabel.Text = STR_CONNECTED_STATUS;
 
-                // Commence la surveillance du dossier
-                folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                try
+                {
+                    // Recommence la surveillance du dossier
+                    folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                }
+                catch (Exception ExE)
+                {
+                    // Récupère le message d'erreur et l'affiche dans une MessageBox
+                    string strErreur = Convert.ToString(ExE.Message);
+                    MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    addToLogs("Erreur " + strErreur);
+                }
                 checkModificationTimer.Start();
             }
             else
@@ -328,8 +333,18 @@ namespace DropBoxClient
                     strFolderToSynchPath = Properties.Settings.Default.strFolderPath;
                 }
             }
-            // Recommence à surveiller le dossier
-            folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+            try
+            {
+                // Recommence la surveillance du dossier
+                folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ExE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(ExE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                addToLogs("Erreur " + strErreur);
+            }
             currentStatusLabel.Text = STR_CONNECTED_STATUS;
         } // END chooseFolderButton_Click()
 
@@ -1018,8 +1033,18 @@ namespace DropBoxClient
                 createLocalFolder(root, jaAllFoldersAndFiles);
                 createLocalFile(jaAllFoldersAndFiles);
 
-                // Recommence à observer le dossier
-                folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                try
+                {
+                    // Recommence la surveillance du dossier
+                    folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                }
+                catch (Exception ExE)
+                {
+                    // Récupère le message d'erreur et l'affiche dans une MessageBox
+                    string strErreur = Convert.ToString(ExE.Message);
+                    MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    addToLogs("Erreur " + strErreur);
+                }
                 // Réactive le timer
                 checkModificationTimer.Start();
             }
@@ -1330,11 +1355,11 @@ namespace DropBoxClient
                 {   // Effectue une synchronisation
                     synchronizeLocalToDropbox();
                     addToLogs("Synchronisation effectuée avec succès");
+                    // Démarre le timer
+                    checkModificationTimer.Start();
                 }
                 // Modification du statut
                 currentStatusLabel.Text = STR_CONNECTED_STATUS;
-                // Démarre le timer
-                checkModificationTimer.Start();
             }
             else
             {
@@ -1414,6 +1439,8 @@ namespace DropBoxClient
                             strNewFolderPath = strNewFolderPath.Replace("/", "\\");
                             DirectoryInfo newDirectory = new DirectoryInfo(strFolderToSynchPath + strNewFolderPath);
                             newDirectory.Create();
+
+                            addToLogs("Le dossier " + Convert.ToString(jaFoldersFiles[i]["path_display"]) + " a été créé localement");
                         }
                         // Si c'est un élément qui a été supprimé
                         else if (Convert.ToString(jaFoldersFiles[i][".tag"]) == "deleted")
@@ -1427,10 +1454,12 @@ namespace DropBoxClient
                             if (directory.Exists)
                             {
                                 Directory.Delete(strToDeletePath);
+                                addToLogs("Le dossier " + Convert.ToString(jaFoldersFiles[i]["path_display"]) + " a été supprimé");
                             }
                             if (file.Exists)
                             {
                                 File.Delete(strToDeletePath);
+                                addToLogs("Le fichier " + Convert.ToString(jaFoldersFiles[i]["path_display"]) + " a été supprimé");
                             }
                         }
                     }
@@ -1443,8 +1472,18 @@ namespace DropBoxClient
                 MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 addToLogs("Erreur " + strErreur);
             }
-            // Recommence la surveillance du dossier
-            folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+            try
+            {
+                // Recommence la surveillance du dossier
+                folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ExE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(ExE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                addToLogs("Erreur " + strErreur);
+            }
             // Change le statut
             currentStatusLabel.Text = STR_CONNECTED_STATUS;
         } // checkModificationTimer_Tick ()
