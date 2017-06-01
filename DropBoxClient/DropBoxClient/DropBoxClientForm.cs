@@ -192,6 +192,8 @@ namespace DropBoxClient
             // Si l'obtention du token a réussi
             if (boolIsTokenOK)
             {
+                // Avertit l'utilisateur de la réussite de la connexion
+                MessageBox.Show("Connexion réussie.", "Connexion", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 // Obtient les informations du compte
                 getDisplayName();
                 getSpaceUsage();
@@ -205,6 +207,10 @@ namespace DropBoxClient
                 {   // Provoque la synchronisation
                     synchronizeLocalToDropbox();
                 }
+                else
+                {
+                    chooseFolder();
+                }
 
                 // Modification du statut
                 currentStatusLabel.Text = STR_CONNECTED_STATUS;
@@ -213,6 +219,7 @@ namespace DropBoxClient
                 {
                     // Recommence la surveillance du dossier
                     folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                    checkModificationTimer.Start();
                 }
                 catch (Exception ExE)
                 {
@@ -221,7 +228,6 @@ namespace DropBoxClient
                     MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     addToLogs("Erreur " + strErreur);
                 }
-                checkModificationTimer.Start();
             }
             else
             {
@@ -282,6 +288,25 @@ namespace DropBoxClient
             folderToSynchFileSystemWatcher.EnableRaisingEvents = false;
             currentStatusLabel.Text = STR_CHANGING_FOLDER_STATUS;
 
+            chooseFolder();
+
+            try
+            {
+                // Recommence la surveillance du dossier
+                folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+            }
+            catch (Exception ExE)
+            {
+                // Récupère le message d'erreur et l'affiche dans une MessageBox
+                string strErreur = Convert.ToString(ExE.Message);
+                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                addToLogs("Erreur " + strErreur);
+            }
+            currentStatusLabel.Text = STR_CONNECTED_STATUS;
+        } // END chooseFolderButton_Click()
+
+        private void chooseFolder()
+        {
             // Si l'utilisateur choisit un dossier
             if (toSynchFolderBrowserDialog.ShowDialog() == DialogResult.OK)
             {
@@ -333,20 +358,7 @@ namespace DropBoxClient
                     strFolderToSynchPath = Properties.Settings.Default.strFolderPath;
                 }
             }
-            try
-            {
-                // Recommence la surveillance du dossier
-                folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
-            }
-            catch (Exception ExE)
-            {
-                // Récupère le message d'erreur et l'affiche dans une MessageBox
-                string strErreur = Convert.ToString(ExE.Message);
-                MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                addToLogs("Erreur " + strErreur);
-            }
-            currentStatusLabel.Text = STR_CONNECTED_STATUS;
-        } // END chooseFolderButton_Click()
+        }
 
         /// <summary>
         /// Sauvegarde le journal des opérations dans un fichier texte à l'emplacement désiré
@@ -594,7 +606,7 @@ namespace DropBoxClient
             // Ajoute le label au panel contenant le journal des opérations
             logsPanel.Controls.Add(logsTmpLabel);
             // Auguemente la coordonnée Y du prochain label
-            intY += 100;
+            intY += 101;
         }
 
         /// <summary>
@@ -662,7 +674,7 @@ namespace DropBoxClient
             bool boolExists = newFile.Exists;
 
             // Si le fichier existe et n'est pas un fichier temporaire
-            if (boolExists && newFile.Extension != ".tmp" && !(regexTmpHidden.Match(Convert.ToString(newFile.Attributes)).Success) && !(regexTmpName.Match(newFile.Name).Success))
+            if (boolExists && newFile.Extension != ".tmp" && !(regexTmpHidden.Match(Convert.ToString(newFile.Attributes)).Success) && !(regexTmpName.Match(newFile.Name).Success) && newFile.Extension != "")
             {
                 // Calcule le nombre de caractères du chemin du dossier synchronisé
                 int intCommonPath = strFolderToSynchPath.Length;
@@ -817,7 +829,7 @@ namespace DropBoxClient
                 uploadFile(e.FullPath);
             }
             // Si c'est un fichier .tmp ou sans extension qui est renommé en fichier ayant une extension autre que .tmp
-            else if ((oldFile.Extension == ".tmp" && file.Extension != ".tmp") || (oldFile.Extension == "" && file.Extension != ".tmp" && oldFile.Exists))
+            else if ((oldFile.Extension == ".tmp" && file.Extension != ".tmp") || (oldFile.Extension == "" && file.Extension != ".tmp"))
             {   // Renvoie le fichier avec l'extension normale
                 uploadFile(e.FullPath);
             }
@@ -904,7 +916,7 @@ namespace DropBoxClient
             // Selon le type de changement
             switch (e.ChangeType)
             {
-                case WatcherChangeTypes.Created:
+               case WatcherChangeTypes.Created:
                     {
                         // Ignore les fichiers temporaires
                         if (file.Extension != ".tmp" && !(regexTmpHidden.Match(Convert.ToString(file.Attributes)).Success) && !(regexTmpName.Match(e.Name).Success))
@@ -932,8 +944,10 @@ namespace DropBoxClient
                     {
                         uploadFile(e.FullPath);
                         break;
-                    }
+                    } 
             }
+            getSpaceUsage();
+
             // Change le statut de l'application
             currentStatusLabel.Text = STR_CONNECTED_STATUS;
         }
@@ -1048,6 +1062,8 @@ namespace DropBoxClient
                 // Réactive le timer
                 checkModificationTimer.Start();
             }
+            getSpaceUsage();
+
             // Change le statut de l'application
             currentStatusLabel.Text = STR_CONNECTED_STATUS;
         }
@@ -1484,6 +1500,7 @@ namespace DropBoxClient
                 MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 addToLogs("Erreur " + strErreur);
             }
+            getSpaceUsage();
             // Change le statut
             currentStatusLabel.Text = STR_CONNECTED_STATUS;
         } // checkModificationTimer_Tick ()
