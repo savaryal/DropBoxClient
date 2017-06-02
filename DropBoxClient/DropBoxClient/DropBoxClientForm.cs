@@ -70,7 +70,7 @@ namespace DropBoxClient
 
 
         //////////// Variables pour l'authentification ////////////
-        private string strToken; // Châine de caractère contenant le token
+        private string strToken = null; // Châine de caractère contenant le token
         private byte[] tab_byteToken; // Tableau de byte pour la protection du token
         private string strAuthHeader = ""; // En-tête d'authentification
 
@@ -119,11 +119,12 @@ namespace DropBoxClient
             appStartingCheckBox.CheckedChanged += new EventHandler(appStartingCheckBox_CheckedChanged);
 
             // Si le chemin du dossier à synchroniser est mémorisé  
-            if (Properties.Settings.Default.strFolderPath != null)
+            if (Properties.Settings.Default.strFolderPath != "")
             {
                 // Récupère le chemin du dossier
                 strFolderToSynchPath = Properties.Settings.Default.strFolderPath;
                 folderToSynchPathLabel.Text = strFolderToSynchPath;
+                loginChooseFolderLabel.Text = strFolderToSynchPath;
 
                 // Surveille le dossier spécifié
                 folderToSynchFileSystemWatcher.Path = strFolderToSynchPath;
@@ -187,53 +188,57 @@ namespace DropBoxClient
         /// <param name="e">Données liées à l'événement</param>
         private void continueButton_Click(object sender, EventArgs e)
         {
-            bool boolIsTokenOK = getToken();
-
-            // Si l'obtention du token a réussi
-            if (boolIsTokenOK)
+            if(strFolderToSynchPath != "" && strFolderToSynchPath != null)
             {
-                // Avertit l'utilisateur de la réussite de la connexion
-                MessageBox.Show("Connexion réussie.", "Connexion", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                // Obtient les informations du compte
-                getDisplayName();
-                getSpaceUsage();
+                bool boolIsTokenOK = getToken();
 
-                // Affiche l'interface principale
-                showMainInterface();
-                topPanel.Visible = true;
+                // Si l'obtention du token a réussi
+                if (boolIsTokenOK)
+                {
+                    // Avertit l'utilisateur de la réussite de la connexion
+                    MessageBox.Show("Connexion réussie.", "Connexion", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Obtient les informations du compte
+                    getDisplayName();
+                    getSpaceUsage();
 
-                // Si le dossier à synchroniser est spécifié
-                if (Properties.Settings.Default.strFolderPath != null)
-                {   // Provoque la synchronisation
+                    // Affiche l'interface principale
+                    showMainInterface();
+                    topPanel.Visible = true;
+
+                    // Modification du statut
+                    currentStatusLabel.Text = STR_SYNCHRONIZING_STATUS;
+
+                    // Provoque la synchronisation
                     synchronizeLocalToDropbox();
+                    addToLogs("Synchronisation effectuée avec succès");
+
+                    // Modification du statut
+                    currentStatusLabel.Text = STR_CONNECTED_STATUS;
+
+                    try
+                    {
+                        // Recommence la surveillance du dossier
+                        folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                        checkModificationTimer.Start();
+                    }
+                    catch (Exception ExE)
+                    {
+                        // Récupère le message d'erreur et l'affiche dans une MessageBox
+                        string strErreur = Convert.ToString(ExE.Message);
+                        MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        addToLogs("Erreur " + strErreur);
+                    }
                 }
                 else
                 {
-                    chooseFolder();
-                }
-
-                // Modification du statut
-                currentStatusLabel.Text = STR_CONNECTED_STATUS;
-
-                try
-                {
-                    // Recommence la surveillance du dossier
-                    folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
-                    checkModificationTimer.Start();
-                }
-                catch (Exception ExE)
-                {
-                    // Récupère le message d'erreur et l'affiche dans une MessageBox
-                    string strErreur = Convert.ToString(ExE.Message);
-                    MessageBox.Show(strErreur, "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    addToLogs("Erreur " + strErreur);
+                    // Modification du statut
+                    currentStatusLabel.Text = STR_ERROR_LOGIN_STATUS;
+                    addToLogs("Connexion échouée");
                 }
             }
             else
             {
-                // Modification du statut
-                currentStatusLabel.Text = STR_ERROR_LOGIN_STATUS;
-                addToLogs("Connexion échouée");
+                MessageBox.Show("Veuillez choisir un dossier à synchroniser.", "Attention", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -343,14 +348,21 @@ namespace DropBoxClient
                     // Enregistre le chemin du dossier
                     strFolderToSynchPath = toSynchFolderBrowserDialog.SelectedPath;
                     folderToSynchPathLabel.Text = strFolderToSynchPath;
+                    loginChooseFolderLabel.Text = strFolderToSynchPath;
                     Properties.Settings.Default.strFolderPath = strFolderToSynchPath;
-
-                    // Surveille le dossier spécifié
+                    
+                    // Spécifie le chemin du dossier à surveiller
                     folderToSynchFileSystemWatcher.Path = strFolderToSynchPath;
-                    addToLogs("Le dossier à synchroniser a été changé en " + strFolderToSynchPath);
 
-                    // Synchronise le nouveau dossier avec Dropbox
-                    synchronizeLocalToDropbox();
+                    // Si un jeton existe
+                    if (strToken != null)
+                    {
+                        // Surveille le dossier spécifié
+                        folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                        addToLogs("Le dossier à synchroniser a été défini comme " + strFolderToSynchPath);
+                        // Synchronise le nouveau dossier avec Dropbox
+                        synchronizeLocalToDropbox();
+                    }
                 }
                 else
                 {
@@ -1026,7 +1038,7 @@ namespace DropBoxClient
         private void synchronizeLocalToDropbox()
         {
             // S'il y a un dossier synchronisé
-            if (Properties.Settings.Default.strFolderPath != "")
+            if (strFolderToSynchPath != "")
             {
                 // Change le statut de l'application
                 currentStatusLabel.Text = STR_SYNCHRONIZING_STATUS;
@@ -1367,12 +1379,21 @@ namespace DropBoxClient
                 showMainInterface();
 
                 // Si un dossier à synchroniser a été choisi
-                if(Properties.Settings.Default.strFolderPath != null)
-                {   // Effectue une synchronisation
-                    synchronizeLocalToDropbox();
-                    addToLogs("Synchronisation effectuée avec succès");
-                    // Démarre le timer
-                    checkModificationTimer.Start();
+                if(Properties.Settings.Default.strFolderPath != "")
+                {
+                    try
+                    {
+                        folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
+                        // Effectue une synchronisation
+                        synchronizeLocalToDropbox();
+                        addToLogs("Synchronisation effectuée avec succès");
+                        // Démarre le timer
+                        checkModificationTimer.Start();
+                    }
+                    catch
+                    {
+
+                    }
                 }
                 // Modification du statut
                 currentStatusLabel.Text = STR_CONNECTED_STATUS;
@@ -1527,6 +1548,11 @@ namespace DropBoxClient
             }
             // Sauvegarde l'état de la chekbox
             Properties.Settings.Default.boolCheckState = appStartingCheckBox.Checked;
+        }
+
+        private void loginChooseFolderButton_Click(object sender, EventArgs e)
+        {
+            chooseFolder();
         }
     }
 }

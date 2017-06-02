@@ -66,6 +66,8 @@
             this.loginButton = new System.Windows.Forms.Button();
             this.folderToSynchFileSystemWatcher = new System.IO.FileSystemWatcher();
             this.checkModificationTimer = new System.Windows.Forms.Timer(this.components);
+            this.loginChooseFolderLabel = new System.Windows.Forms.Label();
+            this.loginChooseFolderButton = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.parametersHomePictureBox)).BeginInit();
             this.topPanel.SuspendLayout();
             this.bottomPanel.SuspendLayout();
@@ -340,6 +342,8 @@
             // 
             // loginPanel
             // 
+            this.loginPanel.Controls.Add(this.loginChooseFolderButton);
+            this.loginPanel.Controls.Add(this.loginChooseFolderLabel);
             this.loginPanel.Controls.Add(this.continueButton);
             this.loginPanel.Controls.Add(this.dropboxCodeLabel);
             this.loginPanel.Controls.Add(this.dropboxCodeTextBox);
@@ -415,7 +419,6 @@
             // 
             // folderToSynchFileSystemWatcher
             // 
-            this.folderToSynchFileSystemWatcher.EnableRaisingEvents = true;
             this.folderToSynchFileSystemWatcher.IncludeSubdirectories = true;
             this.folderToSynchFileSystemWatcher.SynchronizingObject = this;
             this.folderToSynchFileSystemWatcher.Changed += new System.IO.FileSystemEventHandler(this.folderToSynchFileSystemWatcher_Changed);
@@ -429,10 +432,29 @@
             this.checkModificationTimer.Interval = 10000;
             this.checkModificationTimer.Tick += new System.EventHandler(this.checkModificationTimer_Tick);
             // 
+            // loginChooseFolderLabel
+            // 
+            this.loginChooseFolderLabel.AutoEllipsis = true;
+            this.loginChooseFolderLabel.AutoSize = true;
+            this.loginChooseFolderLabel.Location = new System.Drawing.Point(26, 355);
+            this.loginChooseFolderLabel.Name = "loginChooseFolderLabel";
+            this.loginChooseFolderLabel.Size = new System.Drawing.Size(271, 17);
+            this.loginChooseFolderLabel.TabIndex = 6;
+            this.loginChooseFolderLabel.Text = "Veuillez choisir le dossier à synchroniser ...";
+            // 
+            // loginChooseFolderButton
+            // 
+            this.loginChooseFolderButton.Location = new System.Drawing.Point(312, 350);
+            this.loginChooseFolderButton.Name = "loginChooseFolderButton";
+            this.loginChooseFolderButton.Size = new System.Drawing.Size(150, 27);
+            this.loginChooseFolderButton.TabIndex = 7;
+            this.loginChooseFolderButton.Text = "Choisir un dossier";
+            this.loginChooseFolderButton.UseVisualStyleBackColor = true;
+            this.loginChooseFolderButton.Click += new System.EventHandler(this.loginChooseFolderButton_Click);
+            // 
             // DropBoxClientForm
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 17F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
             this.ClientSize = new System.Drawing.Size(501, 628);
             this.Controls.Add(this.bottomPanel);
             this.Controls.Add(this.topPanel);
@@ -510,6 +532,8 @@
         private System.Windows.Forms.Label usedAndAllocatedSpaceLabel;
         private System.IO.FileSystemWatcher folderToSynchFileSystemWatcher;
         private System.Windows.Forms.Timer checkModificationTimer;
+        private System.Windows.Forms.Label loginChooseFolderLabel;
+        private System.Windows.Forms.Button loginChooseFolderButton;
     }
 }
 
