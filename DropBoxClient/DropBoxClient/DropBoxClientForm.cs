@@ -3,16 +3,16 @@
 ///Date   : 11.05.2017
 ///Description : Client Dropbox en C#
 ///   
+using Microsoft.Win32;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Net;
-using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Win32;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
 namespace DropBoxClient
@@ -933,9 +933,6 @@ namespace DropBoxClient
                         // Ignore les fichiers temporaires
                         if (file.Extension != ".tmp" && !(regexTmpHidden.Match(Convert.ToString(file.Attributes)).Success) && !(regexTmpName.Match(e.Name).Success))
                         {
-                            // L'évènement Created réagit dès la création du dossier/fichier, même s'il n'a pas encore été nommé.
-                            // C'est pour cela que si le dossier contien "Nouveau", il ne le crée pas tout de suite,
-                            // sa création est faite dans l'évènement Renamed une fois son nom défini.
                             // Si le résultat ne correspond pas à "Nouveau"
                             if (!regexNew.Match(e.Name).Success)
                             {   // Crée un dossier
